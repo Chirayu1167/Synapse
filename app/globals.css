@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #444748;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #8e9192;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    font-size: 18px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    user-select: none;
+  }
+}
+
+@layer components {
+  /* Glass panel — the core Stitch surface */
+  .glass-panel {
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+
+  /* Inputs */
+  .input-base {
+    @apply w-full rounded border border-outline-variant bg-surface-container-low px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-outline focus:border-outline transition-colors;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded border border-outline-variant bg-surface-container-high px-4 py-2 text-mono-label font-mono-label text-on-surface hover:bg-surface-bright hover:border-outline focus:outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded px-3 py-2 text-mono-label font-mono-label text-on-surface-variant hover:bg-surface-container hover:text-on-surface focus:outline-none transition-colors;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 rounded px-3 py-2 text-mono-label font-mono-label text-error hover:bg-error/10 focus:outline-none transition-colors;
+  }
+
+  /* Card — maps to glass-panel in Stitch */
+  .card {
+    @apply glass-panel;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-mono-label font-mono-label border border-outline-variant/30;
+  }
+
+  /* Nav item active state */
+  .nav-item-active {
+    @apply bg-on-surface/5 text-on-surface border-r-2 border-on-surface;
+  }
+
+  .nav-item {
+    @apply text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors;
+  }
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.ai-pulse {
+  animation: ai-pulse 2s ease-in-out infinite;
+}
+
+/* Enhanced Spacing Scale */
+@layer utilities {
+  .px-2\.5 { padding-left: 0.625rem; padding-right: 0.625rem; }
+  .py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+  .px-3\.5 { padding-left: 0.875rem; padding-right: 0.875rem; }
+  .py-3\.5 { padding-top: 0.875rem; padding-bottom: 0.875rem; }
+  .px-4\.5 { padding-left: 1.125rem; padding-right: 1.125rem; }
+  .py-4\.5 { padding-top: 1.125rem; padding-bottom: 1.125rem; }
+  .px-5\.5 { padding-left: 1.375rem; padding-right: 1.375rem; }
+  .py-5\.5 { padding-top: 1.375rem; padding-bottom: 1.375rem; }
+  .px-6\.5 { padding-left: 1.625rem; padding-right: 1.625rem; }
+  .py-6\.5 { padding-top: 1.625rem; padding-bottom: 1.625rem; }
+
+  .mb-2\.5 { margin-bottom: 0.625rem; }
+  .mt-2\.5 { margin-top: 0.625rem; }
+  .mb-3\.5 { margin-bottom: 0.875rem; }
+  .mt-3\.5 { margin-top: 0.875rem; }
+  .mb-4\.5 { margin-bottom: 1.125rem; }
+  .mt-4\.5 { margin-top: 1.125rem; }
+  .mb-5\.5 { margin-bottom: 1.375rem; }
+  .mt-5\.5 { margin-top: 1.375rem; }
+  .mb-6\.5 { margin-bottom: 1.625rem; }
+  .mt-6\.5 { margin-top: 1.625rem; }
+
+  .gap-2\.5 { gap: 0.625rem; }
+  .gap-3\.5 { gap: 0.875rem; }
+  .gap-4\.5 { gap: 1.125rem; }
+  .gap-5\.5 { gap: 1.375rem; }
+  .gap-6\.5 { gap: 1.625rem; }
+
+  /* Enhanced Text Sizes */
+  .text-xs { font-size: 0.75rem; line-height: 1rem; }
+  .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+  .text-base { font-size: 1rem; line-height: 1.5rem; }
+  .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+  .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+  .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+  .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+  .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+
+  /* Enhanced Font Weights */
+  .font-light { font-weight: 300; }
+  .font-normal { font-weight: 400; }
+  .font-medium { font-weight: 500; }
+  .font-semibold { font-weight: 600; }
+  .font-bold { font-weight: 700; }
+  .font-extrabold { font-weight: 800; }
+
+  /* Enhanced Card Variants */
+  .card-elevated {
+    @apply glass-panel;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+
+  .card-interactive {
+    @apply glass-panel hover:border-outline/25 hover:bg-surface-container-low/90 transition-all;
+  }
+
+  .card-interactive:hover {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Enhanced Hover States */
+  .hover-lift {
+    @apply transition-transform duration-200;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1;
+  }
+
+  /* Enhanced Focus States */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-outline focus-visible:ring-offset-2;
+  }
+}
+
