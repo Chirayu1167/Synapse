@@ -9,11 +9,11 @@ interface ProjectLayoutProps {
 }
 
 const TABS = [
-  { href: "tasks",    label: "Board",    icon: "view_kanban" },
-  { href: "todos",    label: "Todos",    icon: "checklist" },
-  { href: "activity", label: "Activity", icon: "timeline" },
-  { href: "context",  label: "Context",  icon: "link" },
-  { href: "settings", label: "Settings", icon: "settings" },
+  { href: "dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "tasks",     label: "Tasks",     icon: "list_alt" },
+  { href: "team",      label: "Team",      icon: "people" },
+  { href: "activity",  label: "Activity",  icon: "timeline" },
+  { href: "settings",  label: "Settings",  icon: "settings" },
 ];
 
 export default async function ProjectLayout({ children, params }: ProjectLayoutProps) {
@@ -30,6 +30,19 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
       .eq("user_id", user.id)
       .single(),
   ]);
+
+  // Count of tasks assigned to current user that are in 'todo' (accepted but not accepted)
+  const { count: rawCount, error: assignedTodosError } = await supabase
+    .from('tasks')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', id)
+    .eq('owner_id', user.id)
+    .eq('status', 'todo');
+
+  let assignedTodoCount = 0;
+  if (rawCount !== null && rawCount !== undefined) {
+    assignedTodoCount = rawCount;
+  }
 
   if (!project) notFound();
 
@@ -51,6 +64,17 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
             <h1 className="text-on-surface text-xl font-semibold">{project.name}</h1>
             {project.description && (
               <p className="text-sm text-on-surface-variant mt-1">{project.description}</p>
+            )}
+          </div>
+          {/* Notification bell */}
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              notifications
+            </span>
+            {assignedTodoCount > 0 && (
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-outline text-on-surface text-xs font-mono">
+                {assignedTodoCount}
+              </span>
             )}
           </div>
         </div>

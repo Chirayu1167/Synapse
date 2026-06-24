@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
 import { routeBenchTimer } from "@/lib/dev/route-bench";
-import TodoList from "@/components/todos/TodoList";
+import TaskListDisplay from "@/components/tasks/TaskListDisplay";
 
 export default async function TodosPage({
   params,
@@ -12,19 +12,18 @@ export default async function TodosPage({
   const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
-  const { data: todos } = await supabase
-    .from("todos")
-    .select("*, creator:users!todos_created_by_fkey(id, display_name, email, avatar_url)")
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url), due_date")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
   routeBenchTimer().log(`/projects/${projectId}/todos`);
 
   return (
-    <TodoList
+    <TaskListDisplay
       projectId={projectId}
-      todos={todos ?? []}
-      currentUserId={user.id}
+      tasks={tasks ?? []}
     />
   );
 }

@@ -64,7 +64,7 @@ export default function TodoList({ projectId, todos, currentUserId }: Props) {
     <div className="p-4">
       {/* Header + progress */}
       <div className="mb-8">
-        <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-2">// CHECKLIST</p>
+        <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-2">// TASK LIST</p>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm text-on-surface-variant">
             <span className="text-on-surface font-medium">{open.length}</span> remaining
@@ -88,7 +88,7 @@ export default function TodoList({ projectId, todos, currentUserId }: Props) {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Add a todo…"
+          placeholder="Add a task…"
           className="input-base flex-1 text-base py-2.5"
           disabled={isPending}
         />
@@ -102,7 +102,7 @@ export default function TodoList({ projectId, todos, currentUserId }: Props) {
         <div className="glass-panel p-10 text-center">
           <span className="material-symbols-outlined text-on-surface-variant/30 mb-3 block" style={{ fontSize: 32 }}>checklist</span>
           <p className="text-sm text-on-surface-variant/50">
-            No todos yet. Add one above to get started.
+            No tasks yet. Add one above to get started.
           </p>
         </div>
       ) : (

@@ -40,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {projects && projects.length > 0 && (
             <div className="mt-7">
               <p className="px-6 mb-2 text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40">
-                Missions
+                Projects
               </p>
               {projects.map((p) => (
                 <Link

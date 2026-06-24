@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
 import type { TaskStatus } from "@/lib/types";
+import { STATUS_LABELS } from "@/lib/types";
 
 // ============================================================
 // AUTH
@@ -215,11 +216,11 @@ export async function updateTask(
   if (error) throw error;
 
   if (prev?.status !== status) {
-    const labels: Record<string, string> = { todo: "To Do", in_progress: "In Progress", done: "Done" };
+    const label = STATUS_LABELS[status];
     void supabase.from("activity_log").insert({
       project_id: projectId,
       actor_id: user.id,
-      action: `changed status to ${labels[status]}`,
+      action: `changed status to ${label}`,
       entity_type: "task",
       entity_id: taskId,
       entity_title: title.trim(),
@@ -253,12 +254,13 @@ export async function updateTaskStatus(
     supabase.from("tasks").select("title").eq("id", taskId).single(),
   ]);
 
-  const labels: Record<string, string> = { todo: "To Do", in_progress: "In Progress", done: "Done" };
+  // Use STATUS_LABELS from types for consistency
+  const label = STATUS_LABELS[status];
   // Fire activity log without blocking
   supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
-    action: `changed status to ${labels[status]}`,
+    action: `changed status to ${label}`,
     entity_type: "task",
     entity_id: taskId,
     entity_title: task?.title ?? null,

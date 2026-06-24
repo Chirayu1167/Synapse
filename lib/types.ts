@@ -37,7 +37,7 @@ export type PendingInvite = {
   created_at: string;
 };
 
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "unassigned" | "todo" | "in_progress" | "testing" | "done";
 
 export const AI_TOOLS = ["Claude", "ChatGPT", "Cursor", "Gemini", "Manual"] as const;
 export type AiTool = (typeof AI_TOOLS)[number];
@@ -55,6 +55,7 @@ export type Task = {
   updated_at: string;
   owner?: UserProfile | null;
   creator?: UserProfile | null;
+  due_date: string | null;
 };
 
 export type Todo = {
@@ -106,27 +107,33 @@ export type ContextEntry = {
 // ---- UI helpers ----
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
+  unassigned: "Unassigned",
   todo: "To Do",
   in_progress: "In Progress",
+  testing: "Testing",
   done: "Done",
 };
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
-  todo: "border-outline-variant/30 text-on-surface-variant",
-  in_progress: "border-outline/50 text-on-surface",
-  done: "border-outline-variant/20 text-on-surface-variant/60",
+  unassigned: "border border-outline-variant/20 text-on-surface-variant/40",
+  todo: "border border-outline-variant/30 text-on-surface-variant",
+  in_progress: "border border-outline/50 text-on-surface",
+  testing: "border border-outline-variant/30 text-on-surface-variant/50",
+  done: "border border-outline-variant/20 text-on-surface-variant/60",
 };
 
 export const TOOL_COLORS: Record<string, string> = {
-  Claude:  "border-outline-variant/30 text-on-surface-variant",
-  ChatGPT: "border-outline-variant/30 text-on-surface-variant",
-  Cursor:  "border-outline-variant/30 text-on-surface-variant",
-  Gemini:  "border-outline-variant/30 text-on-surface-variant",
-  Manual:  "border-outline-variant/20 text-on-surface-variant/50",
+  Claude:  "border border-outline-variant/30 text-on-surface-variant",
+  ChatGPT: "border border-outline-variant/30 text-on-surface-variant",
+  Cursor:  "border border-outline-variant/30 text-on-surface-variant",
+  Gemini:  "border border-outline-variant/30 text-on-surface-variant",
+  Manual:  "border border-outline-variant/20 text-on-surface-variant/50",
 };
 
 export const COLUMN_ACCENT: Record<TaskStatus, string> = {
+  unassigned:    "text-on-surface-variant/30",
   todo:        "text-on-surface-variant/60",
   in_progress: "text-on-surface",
+  testing:     "text-on-surface-variant/50",
   done:        "text-on-surface-variant/40",
 };

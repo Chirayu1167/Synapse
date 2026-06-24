@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Synapse OS",
-  description: "Mission control for AI-assisted development teams.",
+  description: "Project control for AI-assisted development teams.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

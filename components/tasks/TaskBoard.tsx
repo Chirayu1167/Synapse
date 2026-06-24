@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import type { Task, TaskStatus, ProjectMember } from "@/lib/types";
 import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, TOOL_COLORS, COLUMN_ACCENT } from "@/lib/types";
@@ -15,11 +15,13 @@ interface Props {
   filters: { owner?: string; tool?: string; status?: string };
 }
 
-const COLUMNS: TaskStatus[] = ["todo", "in_progress", "done"];
+const COLUMNS: TaskStatus[] = ["unassigned", "todo", "in_progress", "testing", "done"];
 
 const COLUMN_ICONS: Record<TaskStatus, string> = {
+  unassigned: "person_outline",
   todo: "radio_button_unchecked",
   in_progress: "pending",
+  testing: "science",
   done: "check_circle",
 };
 
@@ -39,9 +41,29 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
   const byStatus = (status: TaskStatus) => filtered.filter((t) => t.status === status);
   const memberUsers = members.map((m: any) => m.user).filter(Boolean);
 
+  // Assigned tasks awaiting acceptance (owner = current user, status = todo)
+  const assignedTasks = tasks.filter(
+    (t) => t.owner_id === currentUserId && t.status === "todo"
+  );
+
   function handleStatusChange(task: Task, status: TaskStatus) {
     startTransition(() => updateTaskStatus(task.id, projectId, status));
   }
+
+  function acceptTask(taskId: string) {
+    startTransition(() => updateTaskStatus(taskId, projectId, "in_progress"));
+  }
+
+  const statusCounts: Record<TaskStatus, number> = {
+    unassigned: 0,
+    todo: 0,
+    in_progress: 0,
+    testing: 0,
+    done: 0,
+  };
+  tasks.forEach((task) => {
+    statusCounts[task.status] = (statusCounts[task.status] ?? 0) + 1;
+  });
 
   return (
     <div className="p-8 min-h-full">
@@ -87,6 +109,32 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
         </div>
       </div>
 
+      {/* Pipeline visualization */}
+      <div className="mb-6 flex items-center space-x-4">
+        {COLUMNS.map((status, index) => (
+          <Fragment key={status}>
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                "relative w-10 h-10 rounded-full",
+                STATUS_COLORS[status]
+              )}>
+                <div className="flex items-center justify-center w-full h-full">
+                  <span className="text-on-surface font-medium">{statusCounts[status] ?? 0}</span>
+                </div>
+              </div>
+              <span className="text-xs text-on-surface-variant/60 mt-1">{STATUS_LABELS[status]}</span>
+            </div>
+            {index < COLUMNS.length - 1 && (
+              <div className="w-4 flex items-center">
+                <div className="h-0.5 w-full bg-outline-variant/20 relative">
+                  <div className="absolute left-0 top-0 h-full w-[8px] bg-outline-variant/40 animate-pulse" />
+                </div>
+              </div>
+            )}
+          </Fragment>
+        ))}
+      </div>
+
       {/* Board columns */}
       <div className="grid gap-y-6 gap-x-8 items-start sm:grid-cols-2 lg:grid-cols-3">
         {COLUMNS.map((status) => (
@@ -103,6 +151,56 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
           />
         ))}
       </div>
+
+      {/* Assigned tasks (to accept) */}
+      {assignedTasks.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-on-surface text-lg font-semibold mb-4">Assigned tasks (awaiting acceptance)</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-outline-variant/20">
+              <thead>
+                <tr className="bg-surface-container-lowest">
+                  <th className="text-left text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 py-3 px-4">Task</th>
+                  <th className="text-left text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 py-3 px-4">Assignee</th>
+                  <th className="text-left text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 py-3 px-4">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/20">
+                {assignedTasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-surface-container-low/50">
+                    <td className="text-base text-on-surface py-4 px-4">{task.title}</td>
+                    <td className="text-base text-on-surface py-4 px-4">
+                      {task.owner ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center bg-surface-container-low">
+                            <span className="text-[10px] font-mono">
+                              {initials((task.owner as any).display_name, (task.owner as any).email)}
+                            </span>
+                          </div>
+                          <span className="text-[12px] font-mono">
+                            {(task.owner as any).display_name ?? (task.owner as any).email}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-on-surface-variant/40">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="text-base text-on-surface py-4 px-4">
+                      <button
+                        onClick={() => acceptTask(task.id)}
+                        className="btn-primary px-4 py-2"
+                        disabled={isPending}
+                      >
+                        Accept
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <TaskModal
@@ -209,7 +307,7 @@ function TaskCard({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           {task.ai_tool && (
-            <span className={cn("badge text-[12px]", TOOL_COLORS[task.ai_tool] ?? "border-outline-variant/30 text-on-surface-variant")}>
+            <span className={cn("badge text-[12px]", TOOL_COLORS[task.ai_tool] ?? "border border-outline-variant/30 text-on-surface-variant")}>
               {task.ai_tool}
             </span>
           )}

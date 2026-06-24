@@ -73,7 +73,7 @@ export default async function ProjectsPage() {
         </div>
         <Link href="/projects/new" className="btn-primary">
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-          New Mission
+          New Project
         </Link>
       </div>
 
@@ -82,13 +82,13 @@ export default async function ProjectsPage() {
           <div className="w-16 h-16 rounded border border-outline-variant flex items-center justify-center mx-auto mb-6 bg-surface-container-low">
             <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: 32 }}>rocket_launch</span>
           </div>
-          <h2 className="text-on-surface text-lg font-medium mb-2">No missions yet</h2>
+          <h2 className="text-on-surface text-lg font-medium mb-2">No projects yet</h2>
           <p className="text-sm text-on-surface-variant mb-6">
             Create your first project to start tracking tasks and AI usage.
           </p>
           <Link href="/projects/new" className="btn-primary inline-flex">
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-            Launch first mission
+            Launch first project
           </Link>
         </div>
       ) : (

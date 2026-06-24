@@ -26,7 +26,7 @@ export default async function LoginPage({
           <div className="text-center">
             <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight">SYNAPSE OS</h1>
             <p className="text-mono-label font-mono-label text-on-surface-variant mt-1 uppercase tracking-widest">
-              Mission Control · v2.4.1
+              Project Control · v2.4.1
             </p>
           </div>
         </div>
