@@ -3,7 +3,7 @@ import { createProject } from "@/lib/actions";
 
 export default function NewProjectPage() {
   return (
-    <div className="max-w-xl mx-auto px-6 py-8">
+    <div className="px-4 py-4">
       <div className="mb-6">
         <Link
           href="/projects"
@@ -15,7 +15,7 @@ export default function NewProjectPage() {
       </div>
 
       <div className="mb-8">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-1">// NEW MISSION</p>
+        <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-1">// NEW PROJECT</p>
         <h1 className="text-headline-sm font-headline-sm text-on-surface">New Project</h1>
       </div>
 
@@ -52,7 +52,7 @@ export default function NewProjectPage() {
           <div className="flex items-center gap-3 pt-2 border-t border-outline-variant/20">
             <button type="submit" className="btn-primary">
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>rocket_launch</span>
-              Launch Mission
+              Launch Project
             </button>
             <Link href="/projects" className="btn-ghost">Cancel</Link>
           </div>

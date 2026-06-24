@@ -23,7 +23,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="p-4">
       <div className="mb-6">
         <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-1">// ACTIVITY LOG</p>
         <p className="text-mono-label font-mono-label text-on-surface-variant">

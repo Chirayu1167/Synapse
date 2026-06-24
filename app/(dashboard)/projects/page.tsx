@@ -59,16 +59,16 @@ export default async function ProjectsPage() {
   for (const m of memberships ?? []) roleMap[m.project_id] = m.role;
 
   return (
-    <div className="max-w-6xl mx-auto px-8 py-10">
+    <div className="px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-1">
-            // MISSION CONTROL
+            // PROJECT CONTROL
           </p>
           <h1 className="text-2xl font-semibold text-on-surface">Projects</h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            {projects?.length ?? 0} active mission{(projects?.length ?? 0) !== 1 ? "s" : ""}
+            {projects?.length ?? 0} active project{(projects?.length ?? 0) !== 1 ? "s" : ""}
           </p>
         </div>
         <Link href="/projects/new" className="btn-primary">

@@ -65,11 +65,11 @@ const config: Config = {
         full: "9999px",
       },
       spacing: {
-        "panel-context": "320px",
-        gutter: "16px",
-        "panel-nav": "240px",
-        "container-padding": "24px",
-        "stack-gap": "8px",
+        "panel-context": "256px", /* 320px * 0.8 */
+        gutter: "12.8px", /* 16px * 0.8 */
+        "panel-nav": "192px", /* 240px * 0.8 */
+        "container-padding": "19.2px", /* 24px * 0.8 */
+        "stack-gap": "6.4px", /* 8px * 0.8 */
       },
       fontFamily: {
         "mono-label": ["Geist Mono", "monospace"],

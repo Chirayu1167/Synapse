@@ -44,7 +44,7 @@ export default function ProjectSettings({ project, members, pendingInvites, curr
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="p-4 space-y-4">
       {/* Project details */}
       <section className="glass-panel p-6">
         <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-4">

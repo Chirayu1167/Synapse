@@ -61,7 +61,7 @@ export default function TodoList({ projectId, todos, currentUserId }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
+    <div className="p-4">
       {/* Header + progress */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-2">// CHECKLIST</p>

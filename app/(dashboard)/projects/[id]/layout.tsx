@@ -38,7 +38,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   return (
     <div className="flex flex-col h-full">
       {/* Project header */}
-      <div className="border-b border-outline-variant/20 bg-surface-container-lowest px-8 pt-6 pb-0">
+      <div className="border-b border-outline-variant/20 bg-surface-container-lowest px-4 pt-4 pb-0">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-3">
           <Link href="/projects" className="hover:text-on-surface-variant transition-colors">Projects</Link>

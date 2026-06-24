@@ -8,7 +8,7 @@ export default async function LoginPage({
   const params = await searchParams;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-2">
       {/* Grid background */}
       <div className="fixed inset-0 pointer-events-none"
         style={{
