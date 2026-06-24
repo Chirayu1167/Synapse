@@ -31,6 +31,10 @@ export function formatDateTime(date: string): string {
   });
 }
 
+export function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function initials(name: string | null | undefined, email?: string): string {
   if (name) {
     return name

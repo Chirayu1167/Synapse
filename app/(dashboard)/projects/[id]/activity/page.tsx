@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { formatRelativeTime, formatDateTime, initials } from "@/lib/utils";
 import Image from "next/image";
 
 export default async function ActivityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: entries } = await supabase

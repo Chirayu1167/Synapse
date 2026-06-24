@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import type { TaskStatus } from "@/lib/types";
 
 // ============================================================
@@ -10,7 +10,7 @@ import type { TaskStatus } from "@/lib/types";
 // ============================================================
 
 export async function signInWithGoogle() {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -22,7 +22,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   await supabase.auth.signOut();
   redirect("/login");
 }
@@ -32,19 +32,7 @@ export async function signOut() {
 // ============================================================
 
 export async function createProject(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  console.log("[createProject] user:", user?.id, "userError:", userError);
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  console.log("[createProject] access_token present:", !!token);
-  if (token) {
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-    console.log("[createProject] JWT role:", payload.role, "JWT sub:", payload.sub, "JWT aud:", payload.aud);
-    console.log("[createProject] FULL TOKEN:", token);
-  }
-
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const name = formData.get("name") as string;
@@ -52,40 +40,37 @@ export async function createProject(formData: FormData) {
 
   if (!name?.trim()) throw new Error("Project name is required");
 
-  console.log("[createProject] inserting with owner_id:", user.id);
   const { data: project, error } = await supabase
     .from("projects")
     .insert({ name: name.trim(), description: description?.trim() || null, owner_id: user.id })
     .select()
     .single();
 
-  console.log("[createProject] insert error:", JSON.stringify(error));
   if (error) throw error;
 
-  // Add owner as member
-  await supabase.from("project_members").insert({
-    project_id: project.id,
-    user_id: user.id,
-    role: "owner",
-  });
-
-  // Log activity
-  await supabase.from("activity_log").insert({
-    project_id: project.id,
-    actor_id: user.id,
-    action: "created this project",
-    entity_type: "project",
-    entity_id: project.id,
-    entity_title: project.name,
-  });
+  // Add owner as member and log activity in parallel
+  await Promise.all([
+    supabase.from("project_members").insert({
+      project_id: project.id,
+      user_id: user.id,
+      role: "owner",
+    }),
+    supabase.from("activity_log").insert({
+      project_id: project.id,
+      actor_id: user.id,
+      action: "created this project",
+      entity_type: "project",
+      entity_id: project.id,
+      entity_title: project.name,
+    }),
+  ]);
 
   revalidatePath("/projects");
   redirect(`/projects/${project.id}/tasks`);
 }
 
 export async function updateProject(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const name = formData.get("name") as string;
@@ -101,7 +86,7 @@ export async function updateProject(projectId: string, formData: FormData) {
 }
 
 export async function deleteProject(projectId: string) {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) throw error;
   revalidatePath("/projects");
@@ -109,14 +94,12 @@ export async function deleteProject(projectId: string) {
 }
 
 export async function inviteMember(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const email = (formData.get("email") as string)?.toLowerCase().trim();
   if (!email) throw new Error("Email is required");
 
-  // Check if user already exists
   const { data: existingUser } = await supabase
     .from("users")
     .select("id")
@@ -124,15 +107,13 @@ export async function inviteMember(projectId: string, formData: FormData) {
     .single();
 
   if (existingUser) {
-    // Add directly as member
     const { error } = await supabase.from("project_members").insert({
       project_id: projectId,
       user_id: existingUser.id,
       role: "member",
     });
-    if (error && error.code !== "23505") throw error; // ignore duplicate
+    if (error && error.code !== "23505") throw error;
   } else {
-    // Store as pending invite
     const { error } = await supabase.from("pending_invites").insert({
       project_id: projectId,
       invited_email: email,
@@ -145,7 +126,7 @@ export async function inviteMember(projectId: string, formData: FormData) {
 }
 
 export async function removeMember(projectId: string, userId: string) {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   await supabase
     .from("project_members")
     .delete()
@@ -155,7 +136,7 @@ export async function removeMember(projectId: string, userId: string) {
 }
 
 export async function cancelInvite(inviteId: string, projectId: string) {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   await supabase.from("pending_invites").delete().eq("id", inviteId);
   revalidatePath(`/projects/${projectId}/settings`);
 }
@@ -165,8 +146,7 @@ export async function cancelInvite(inviteId: string, projectId: string) {
 // ============================================================
 
 export async function createTask(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const title = formData.get("title") as string;
@@ -193,7 +173,8 @@ export async function createTask(projectId: string, formData: FormData) {
 
   if (error) throw error;
 
-  await supabase.from("activity_log").insert({
+  // Fire activity log without blocking revalidation
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: "created task",
@@ -203,7 +184,6 @@ export async function createTask(projectId: string, formData: FormData) {
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function updateTask(
@@ -211,8 +191,7 @@ export async function updateTask(
   projectId: string,
   formData: FormData
 ) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const title = formData.get("title") as string;
@@ -221,57 +200,43 @@ export async function updateTask(
   const ai_tool = (formData.get("ai_tool") as string) || null;
   const status = formData.get("status") as TaskStatus;
 
-  // Get previous state for activity log
-  const { data: prev } = await supabase
-    .from("tasks")
-    .select("status, owner_id, title")
-    .eq("id", taskId)
-    .single();
-
-  const { error } = await supabase
-    .from("tasks")
-    .update({
+  // Get previous state and do update in parallel
+  const [{ data: prev }, { error }] = await Promise.all([
+    supabase.from("tasks").select("status, owner_id, title").eq("id", taskId).single(),
+    supabase.from("tasks").update({
       title: title.trim(),
       description: description?.trim() || null,
       owner_id: owner_id || null,
       ai_tool: ai_tool || null,
       status,
-    })
-    .eq("id", taskId);
+    }).eq("id", taskId),
+  ]);
 
   if (error) throw error;
 
-  // Log meaningful changes
-  const logs: Promise<unknown>[] = [];
   if (prev?.status !== status) {
     const labels: Record<string, string> = { todo: "To Do", in_progress: "In Progress", done: "Done" };
-    logs.push(
-      supabase.from("activity_log").insert({
-        project_id: projectId,
-        actor_id: user.id,
-        action: `changed status to ${labels[status]}`,
-        entity_type: "task",
-        entity_id: taskId,
-        entity_title: title.trim(),
-      })
-    );
+    void supabase.from("activity_log").insert({
+      project_id: projectId,
+      actor_id: user.id,
+      action: `changed status to ${labels[status]}`,
+      entity_type: "task",
+      entity_id: taskId,
+      entity_title: title.trim(),
+    });
   }
   if (prev?.owner_id !== owner_id) {
-    logs.push(
-      supabase.from("activity_log").insert({
-        project_id: projectId,
-        actor_id: user.id,
-        action: "reassigned task",
-        entity_type: "task",
-        entity_id: taskId,
-        entity_title: title.trim(),
-      })
-    );
+    void supabase.from("activity_log").insert({
+      project_id: projectId,
+      actor_id: user.id,
+      action: "reassigned task",
+      entity_type: "task",
+      entity_id: taskId,
+      entity_title: title.trim(),
+    });
   }
-  await Promise.all(logs);
 
   revalidatePath(`/projects/${projectId}/tasks`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function updateTaskStatus(
@@ -279,20 +244,18 @@ export async function updateTaskStatus(
   projectId: string,
   status: TaskStatus
 ) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: task } = await supabase
-    .from("tasks")
-    .select("title")
-    .eq("id", taskId)
-    .single();
-
-  await supabase.from("tasks").update({ status }).eq("id", taskId);
+  // Run update and fetch title in parallel
+  const [, { data: task }] = await Promise.all([
+    supabase.from("tasks").update({ status }).eq("id", taskId),
+    supabase.from("tasks").select("title").eq("id", taskId).single(),
+  ]);
 
   const labels: Record<string, string> = { todo: "To Do", in_progress: "In Progress", done: "Done" };
-  await supabase.from("activity_log").insert({
+  // Fire activity log without blocking
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: `changed status to ${labels[status]}`,
@@ -302,23 +265,19 @@ export async function updateTaskStatus(
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function deleteTask(taskId: string, projectId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: task } = await supabase
-    .from("tasks")
-    .select("title")
-    .eq("id", taskId)
-    .single();
+  const [{ data: task }] = await Promise.all([
+    supabase.from("tasks").select("title").eq("id", taskId).single(),
+    supabase.from("tasks").delete().eq("id", taskId),
+  ]);
 
-  await supabase.from("tasks").delete().eq("id", taskId);
-
-  await supabase.from("activity_log").insert({
+  // Fire activity log without blocking
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: "deleted task",
@@ -328,7 +287,6 @@ export async function deleteTask(taskId: string, projectId: string) {
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 // ============================================================
@@ -336,8 +294,7 @@ export async function deleteTask(taskId: string, projectId: string) {
 // ============================================================
 
 export async function createTodo(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const text = formData.get("text") as string;
@@ -351,7 +308,8 @@ export async function createTodo(projectId: string, formData: FormData) {
 
   if (error) throw error;
 
-  await supabase.from("activity_log").insert({
+  // Fire activity log without blocking
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: "added todo",
@@ -363,34 +321,30 @@ export async function createTodo(projectId: string, formData: FormData) {
   revalidatePath(`/projects/${projectId}/todos`);
 }
 
-export async function toggleTodo(todoId: string, projectId: string, done: boolean) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+// Accept todoText from client so we don't need an extra SELECT
+export async function toggleTodo(todoId: string, projectId: string, done: boolean, todoText?: string) {
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
-
-  const { data: todo } = await supabase
-    .from("todos")
-    .select("text")
-    .eq("id", todoId)
-    .single();
 
   await supabase.from("todos").update({ done }).eq("id", todoId);
 
-  await supabase.from("activity_log").insert({
+  // Fire activity log without blocking
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: done ? "completed todo" : "unchecked todo",
     entity_type: "todo",
     entity_id: todoId,
-    entity_title: todo?.text ?? null,
+    entity_title: todoText ?? null,
   });
 
   revalidatePath(`/projects/${projectId}/todos`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function deleteTodo(todoId: string, projectId: string) {
-  const supabase = await createClient();
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
   await supabase.from("todos").delete().eq("id", todoId);
   revalidatePath(`/projects/${projectId}/todos`);
 }
@@ -400,8 +354,7 @@ export async function deleteTodo(todoId: string, projectId: string) {
 // ============================================================
 
 export async function createAiUsageEntry(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const tool_name = formData.get("tool_name") as string;
@@ -424,8 +377,7 @@ export async function createAiUsageEntry(formData: FormData) {
 }
 
 export async function updateAiUsageEntry(entryId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const tool_name = formData.get("tool_name") as string;
@@ -449,8 +401,7 @@ export async function updateAiUsageEntry(entryId: string, formData: FormData) {
 }
 
 export async function deleteAiUsageEntry(entryId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   await supabase
@@ -467,8 +418,7 @@ export async function deleteAiUsageEntry(entryId: string) {
 // ============================================================
 
 export async function createContextEntry(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const source_type = formData.get("source_type") as "link" | "text";
@@ -493,7 +443,7 @@ export async function createContextEntry(projectId: string, formData: FormData) 
 
   if (error) throw error;
 
-  await supabase.from("activity_log").insert({
+  supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: `added context ${source_type === "link" ? "link" : "paste"}`,
@@ -503,11 +453,10 @@ export async function createContextEntry(projectId: string, formData: FormData) 
   });
 
   revalidatePath(`/projects/${projectId}/context`);
-  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function deleteContextEntry(entryId: string, projectId: string) {
-  const supabase = await createClient();
+  const { supabase } = await getAuthUser();
   await supabase.from("context_entries").delete().eq("id", entryId);
   revalidatePath(`/projects/${projectId}/context`);
 }

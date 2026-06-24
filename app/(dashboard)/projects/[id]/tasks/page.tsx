@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
+import { routeBenchTimer } from "@/lib/dev/route-bench";
 import TaskBoard from "@/components/tasks/TaskBoard";
+import type { ProjectMember } from "@/lib/types";
 
 export default async function TasksPage({
   params,
@@ -11,28 +13,28 @@ export default async function TasksPage({
 }) {
   const { id: projectId } = await params;
   const filters = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
-  // Fetch tasks with owner info
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url)")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
+  const [{ data: tasks }, { data: members }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url)")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("project_members")
+      .select("user_id, role, user:users(id, display_name, email, avatar_url)")
+      .eq("project_id", projectId),
+  ]);
 
-  // Fetch members for owner assignment dropdown
-  const { data: members } = await supabase
-    .from("project_members")
-    .select("user_id, role, user:users(id, display_name, email, avatar_url)")
-    .eq("project_id", projectId);
+  routeBenchTimer().log(`/projects/${projectId}/tasks`);
 
   return (
     <TaskBoard
       projectId={projectId}
       tasks={tasks ?? []}
-      members={members ?? []}
+      members={(members ?? []) as unknown as ProjectMember[]}
       currentUserId={user.id}
       filters={filters}
     />

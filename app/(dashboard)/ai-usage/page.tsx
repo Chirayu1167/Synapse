@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import AiUsageTracker from "@/components/AiUsageTracker";
 
 export default async function AiUsagePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: entries } = await supabase

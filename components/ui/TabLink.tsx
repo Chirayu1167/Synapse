@@ -23,14 +23,14 @@ export default function TabLink({
     <Link
       href={fullHref}
       className={cn(
-        "flex items-center gap-1.5 px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest border-b-2 transition-colors",
+        "flex items-center gap-1.5 flex-1 px-3 py-2.5 text-base font-mono uppercase tracking-widest border-b-2 transition-colors text-center",
         isActive
           ? "border-on-surface text-on-surface"
           : "border-transparent text-on-surface-variant/50 hover:text-on-surface-variant hover:border-outline-variant/40"
       )}
     >
       {icon && (
-        <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{icon}</span>
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{icon}</span>
       )}
       {label}
     </Link>
