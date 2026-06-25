@@ -76,11 +76,8 @@ export default async function TeamPage({
         <MemberList
           projectId={projectId}
           members={processedMembers}
+          tasks={tasks ?? []}
           currentUserId={user.id}
-          onMemberSelect={(memberId) => {
-            // This would update state in a real implementation
-            console.log("Selected member:", memberId);
-          }}
         />
 
         {/* Member Details */}

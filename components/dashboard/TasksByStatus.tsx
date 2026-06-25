@@ -55,29 +55,6 @@ export function TasksByStatus({ tasks }: TasksByStatusProps) {
           </div>
         ))}
       </div>
-
-      <div className="mt-4 pt-3 border-t border-outline-variant/10">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-2">
-          Workflow
-        </p>
-        <div className="flex items-center space-x-4">
-          {COLUMNS.map((status, index) => (
-            <Fragment key={status}>
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center",
-                STATUS_COLORS[status]
-              )}>
-                <span className="text-on-surface font-medium">{statusCounts[status] > 0 ? "●" : "○"}</span>
-              </div>
-              {index < COLUMNS.length - 1 && (
-                <div className="h-0.5 w-4 bg-outline-variant/20 relative">
-                  <div className="absolute left-0 top-0 h-full w-[4px] bg-outline-variant/40" />
-                </div>
-              )}
-            </Fragment>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

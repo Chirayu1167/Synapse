@@ -113,11 +113,11 @@ export function TeamStats({
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center border border-outline-variant/20">
                           <span className="text-[10px] font-mono">
-                            {member.user.display_name?.charAt(0) ?? member.user.email?.charAt(0) ?? "?"}
+                            {member.user?.display_name?.charAt(0) ?? member.user?.email?.charAt(0) ?? "?"}
                           </span>
                         </div>
                         <div>
-                          <h4 className="text-on-surface font-medium">{member.user.display_name ?? member.user.email ?? ''}</h4>
+                          <h4 className="text-on-surface font-medium">{member.user?.display_name ?? member.user?.email ?? ''}</h4>
                           <p className="text-on-surface-variant/60 text-[11px] font-mono">
                             {member.assignedTasks} assigned tasks
                           </p>

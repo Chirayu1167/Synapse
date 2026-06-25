@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
 import { routeBenchTimer } from "@/lib/dev/route-bench";
+import type { ProjectMember } from "@/lib/types";
 import {
-  StatCard,
   ProjectProgressCard,
   TasksByStatus,
   AssignedToMeSection,
@@ -13,10 +13,13 @@ import {
 
 export default async function DashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ owner?: string; tool?: string; status?: string }>;
 }) {
   const { id: projectId } = await params;
+  const filters = await searchParams;
   const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
@@ -29,7 +32,7 @@ export default async function DashboardPage({
   ] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url), due_date")
+      .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url)")
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
     supabase
@@ -56,6 +59,13 @@ export default async function DashboardPage({
     user: m.user[0]
   })) ?? [];
 
+  // Apply filters (owner and tool) similar to TaskBoard
+  const filteredTasks = (tasks ?? []).filter((task) => {
+    if (filters.owner && filters.owner !== '' && task.owner_id !== filters.owner) return false;
+    if (filters.tool && filters.tool !== '' && task.ai_tool !== filters.tool) return false;
+    return true;
+  });
+
   routeBenchTimer().log(`/projects/${projectId}/dashboard`);
 
   return (
@@ -68,64 +78,19 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard
-          title="Total Tasks"
-          value={tasks?.length ?? 0}
-          trend={calculateTrend(tasks ?? [], "total")}
-          icon="list_alt"
-        />
-        <StatCard
-          title="Completed"
-          value={tasks?.filter(t => t.status === "done").length ?? 0}
-          trend={calculateTrend(tasks ?? [], "done")}
-          icon="check_circle"
-          variant="success"
-        />
-        <StatCard
-          title="In Progress"
-          value={tasks?.filter(t => t.status === "in_progress").length ?? 0}
-          trend={calculateTrend(tasks ?? [], "in_progress")}
-          icon="pending"
-          variant="warning"
-        />
-        <StatCard
-          title="To Do"
-          value={tasks?.filter(t => t.status === "todo").length ?? 0}
-          trend={calculateTrend(tasks ?? [], "todo")}
-          icon="radio_button_unchecked"
-          variant="info"
-        />
-        <StatCard
-          title="Testing"
-          value={tasks?.filter(t => t.status === "testing").length ?? 0}
-          trend={calculateTrend(tasks ?? [], "testing")}
-          icon="science"
-          variant="info"
-        />
-        <StatCard
-          title="Overdue"
-          value={calculateOverdue(tasks ?? [])}
-          trend={calculateOverdueTrend(tasks ?? [])}
-          icon="warning"
-          variant="error"
-        />
-      </div>
-
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column - 2/3 width on lg+ */}
         <div className="lg:col-span-2">
-          <ProjectProgressCard project={project} tasks={tasks ?? []} />
-          <TasksByStatus tasks={tasks ?? []} />
+          <ProjectProgressCard project={project} tasks={filteredTasks} />
+          <TasksByStatus tasks={filteredTasks} />
           <AssignedToMeSection
             projectId={projectId}
             userId={user.id}
-            tasks={tasks ?? []}
+            tasks={filteredTasks}
             members={processedMembers}
           />
-          <UpcomingDeadlines tasks={tasks ?? []} />
+          <UpcomingDeadlines tasks={filteredTasks} />
         </div>
 
         {/* Sidebar - 1/3 width on lg+ */}
@@ -136,38 +101,4 @@ export default async function DashboardPage({
       </div>
     </div>
   );
-}
-
-// Helper functions
-function calculateTrend(tasks: any[], status: string): { value: string; isPositive: boolean } {
-  if (!tasks || tasks.length === 0) return { value: "0%", isPositive: false };
-
-  const statusCount = tasks.filter(t => t.status === status).length;
-  const total = tasks.length;
-  const percentage = Math.round((statusCount / total) * 100);
-
-  // For simplicity, we'll consider it positive if > 0
-  // In a real app, you'd compare to previous period
-  return { value: `${percentage}%`, isPositive: percentage > 0 };
-}
-
-function calculateOverdue(tasks: any[]): number {
-  if (!tasks) return 0;
-  const now = new Date();
-  return tasks.filter(task => {
-    if (!task.due_date) return false;
-    const dueDate = new Date(task.due_date);
-    return dueDate < now && task.status !== "done";
-  }).length;
-}
-
-function calculateOverdueTrend(tasks: any[]): { value: string; isPositive: boolean } {
-  if (!tasks || tasks.length === 0) return { value: "0%", isPositive: false };
-
-  const overdueCount = calculateOverdue(tasks);
-  const total = tasks.length;
-  const percentage = Math.round((overdueCount / total) * 100);
-
-  // Lower is better for overdue, so invert the logic
-  return { value: `${percentage}%`, isPositive: percentage === 0 };
 }

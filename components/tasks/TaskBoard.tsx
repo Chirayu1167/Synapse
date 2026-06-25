@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, Fragment } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, Fragment, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Task, TaskStatus, ProjectMember } from "@/lib/types";
 import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, TOOL_COLORS, COLUMN_ACCENT } from "@/lib/types";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
@@ -26,11 +26,24 @@ const COLUMN_ICONS: Record<TaskStatus, string> = {
 };
 
 export default function TaskBoard({ projectId, tasks, members, currentUserId, filters }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [showCreate, setShowCreate] = useState<TaskStatus | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [ownerFilter, setOwnerFilter] = useState(filters.owner ?? "");
   const [toolFilter, setToolFilter] = useState(filters.tool ?? "");
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (ownerFilter) params.set('owner', ownerFilter);
+    else params.delete('owner');
+    if (toolFilter) params.set('tool', toolFilter);
+    else params.delete('tool');
+    // Preserve other existing query params (like status, page, etc.)
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [ownerFilter, toolFilter, searchParams, router]);
 
   const filtered = tasks.filter((t) => {
     if (ownerFilter && t.owner_id !== ownerFilter) return false;
