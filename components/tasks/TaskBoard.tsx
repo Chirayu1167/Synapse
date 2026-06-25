@@ -3,7 +3,7 @@
 import { useState, useTransition, Fragment, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Task, TaskStatus, ProjectMember } from "@/lib/types";
-import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, TOOL_COLORS, COLUMN_ACCENT } from "@/lib/types";
+import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, STATUS_COLORS_ACTIVE, TOOL_COLORS, COLUMN_ACCENT, getMaxStatus } from "@/lib/types";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
 import { cn, initials } from "@/lib/utils";
 
@@ -77,6 +77,7 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
   tasks.forEach((task) => {
     statusCounts[task.status] = (statusCounts[task.status] ?? 0) + 1;
   });
+  const maxStatus = getMaxStatus(statusCounts, COLUMNS);
 
   return (
     <div className="p-8 min-h-full">
@@ -128,8 +129,8 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
           <Fragment key={status}>
             <div className="flex flex-col items-center">
               <div className={cn(
-                "relative w-10 h-10 rounded-full",
-                STATUS_COLORS[status]
+                "relative w-10 h-10 rounded-full transition-colors",
+                status === maxStatus ? STATUS_COLORS_ACTIVE[status] : STATUS_COLORS[status]
               )}>
                 <div className="flex items-center justify-center w-full h-full">
                   <span className="text-on-surface font-medium">{statusCounts[status] ?? 0}</span>
@@ -306,7 +307,7 @@ function TaskCard({
   return (
     <div
       className={cn(
-        "bg-surface-container-low rounded border border-outline-variant/20 p-6 hover:border-outline-variant/30 transition-all cursor-pointer group hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)]",
+        "bg-surface-container-low rounded border border-outline-variant/20 p-6 hover:border-outline-variant/30 transition-all cursor-pointer group hover:shadow-[0_0_0_1px_rgb(var(--color-on-surface)/0.1)]",
         isPending && "opacity-50"
       )}
       onClick={() => onEdit(task)}
@@ -365,6 +366,16 @@ function TaskModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const dueDateParts = (() => {
+    if (!task?.due_date) return { date: "", time: "" };
+    const d = new Date(task.due_date);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+    const time = hasTime ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : "";
+    return { date, time };
+  })();
 
   async function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -425,6 +436,29 @@ function TaskModal({
               placeholder="Optional details..."
               className="input-base resize-none"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Due date *</label>
+              <input
+                type="date"
+                name="due_date"
+                required
+                defaultValue={dueDateParts.date}
+                className="input-base"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Due time</label>
+              <input
+                type="time"
+                name="due_time"
+                defaultValue={dueDateParts.time}
+                placeholder="Optional"
+                className="input-base"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

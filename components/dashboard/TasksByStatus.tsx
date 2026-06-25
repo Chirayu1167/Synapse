@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/lib/types";
-import { STATUS_LABELS, STATUS_COLORS } from "@/lib/types";
+import { STATUS_LABELS, STATUS_COLORS, STATUS_COLORS_ACTIVE, getMaxStatus } from "@/lib/types";
 import { Fragment } from "react";
 
 interface TasksByStatusProps {
@@ -23,6 +23,7 @@ export function TasksByStatus({ tasks }: TasksByStatusProps) {
   });
 
   const COLUMNS: TaskStatus[] = ["unassigned", "todo", "in_progress", "testing", "done"];
+  const maxStatus = getMaxStatus(statusCounts, COLUMNS);
 
   return (
     <div className="glass-panel p-6">
@@ -38,8 +39,8 @@ export function TasksByStatus({ tasks }: TasksByStatusProps) {
           <div key={status} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                STATUS_COLORS[status]
+                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                status === maxStatus ? STATUS_COLORS_ACTIVE[status] : STATUS_COLORS[status]
               )}>
                 <span className="text-on-surface font-medium">{statusCounts[status]}</span>
               </div>

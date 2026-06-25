@@ -27,14 +27,9 @@ export const createClient = cache(async () => {
   );
 });
 
-/** Read session from cookies — JWT is validated in middleware via getUser(). */
+/** Get user from Supabase, validating the JWT via getUser(). */
 export const getAuthUser = cache(async () => {
   const supabase = await createClient();
-  if (process.env.BENCH_TRACK_SESSION === "1") {
-    console.warn("[getAuthUser] getSession() read");
-  }
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return { supabase, user: session?.user ?? null };
+  const { data: { user }, error } = await supabase.auth.getUser();
+  return { supabase, user: error ? null : user };
 });

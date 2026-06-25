@@ -9,7 +9,8 @@ export default async function ProjectsPage() {
   const { data: memberships } = await supabase
     .from("project_members")
     .select("project_id, role, projects(*, owner:users!projects_owner_id_fkey(display_name, email))")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "active");
 
   type ProjectRow = {
     id: string;

@@ -101,6 +101,16 @@ export async function inviteMember(projectId: string, formData: FormData) {
   const email = (formData.get("email") as string)?.toLowerCase().trim();
   if (!email) throw new Error("Email is required");
 
+  // Only the project owner can invite — enforced here and by RLS.
+  const { data: ownerRow } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .single();
+  if (ownerRow?.role !== "owner") throw new Error("Only the project owner can invite members");
+
   const { data: existingUser } = await supabase
     .from("users")
     .select("id")
@@ -108,12 +118,31 @@ export async function inviteMember(projectId: string, formData: FormData) {
     .single();
 
   if (existingUser) {
-    const { error } = await supabase.from("project_members").insert({
-      project_id: projectId,
-      user_id: existingUser.id,
-      role: "member",
-    });
+    // Existing user: create a request that they must accept, and that the
+    // owner must then approve, before it becomes an active membership.
+    const { data: member, error } = await supabase
+      .from("project_members")
+      .insert({
+        project_id: projectId,
+        user_id: existingUser.id,
+        role: "member",
+        status: "invited",
+        requested_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
     if (error && error.code !== "23505") throw error;
+
+    if (member) {
+      void supabase.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: user.id,
+        action: "invited to project",
+        entity_type: "member_request",
+        entity_id: member.id,
+        entity_title: email,
+      });
+    }
   } else {
     const { error } = await supabase.from("pending_invites").insert({
       project_id: projectId,
@@ -122,6 +151,93 @@ export async function inviteMember(projectId: string, formData: FormData) {
     });
     if (error && error.code !== "23505") throw error;
   }
+
+  revalidatePath(`/projects/${projectId}/settings`);
+}
+
+/** Invited user accepts an invite — moves it to pending_approval, awaiting the owner's sign-off. */
+export async function acceptMembershipRequest(memberRowId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: row, error } = await supabase
+    .from("project_members")
+    .update({ status: "pending_approval" })
+    .eq("id", memberRowId)
+    .eq("user_id", user.id)
+    .eq("status", "invited")
+    .select("project_id")
+    .single();
+  if (error) throw error;
+
+  if (row) {
+    void supabase.from("activity_log").insert({
+      project_id: row.project_id,
+      actor_id: user.id,
+      action: "accepted invite, awaiting approval",
+      entity_type: "member_request",
+      entity_id: memberRowId,
+      entity_title: null,
+    });
+  }
+
+  revalidatePath("/projects", "layout");
+}
+
+/** Invited (or pending) user declines/withdraws — deletes the request entirely. */
+export async function declineMembershipRequest(memberRowId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("project_members")
+    .delete()
+    .eq("id", memberRowId)
+    .eq("user_id", user.id)
+    .in("status", ["invited", "pending_approval"]);
+
+  revalidatePath("/projects", "layout");
+}
+
+/** Owner approves a pending_approval request — becomes an active member. */
+export async function approveMembershipRequest(memberRowId: string, projectId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: row, error } = await supabase
+    .from("project_members")
+    .update({ status: "active", approved_at: new Date().toISOString() })
+    .eq("id", memberRowId)
+    .eq("project_id", projectId)
+    .eq("status", "pending_approval")
+    .select("user_id")
+    .single();
+  if (error) throw error;
+
+  if (row) {
+    void supabase.from("activity_log").insert({
+      project_id: projectId,
+      actor_id: user.id,
+      action: "approved member",
+      entity_type: "member_request",
+      entity_id: memberRowId,
+      entity_title: null,
+    });
+  }
+
+  revalidatePath(`/projects/${projectId}/settings`);
+}
+
+/** Owner rejects a pending_approval (or still-invited) request — deletes it. */
+export async function rejectMembershipRequest(memberRowId: string, projectId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("project_members")
+    .delete()
+    .eq("id", memberRowId)
+    .eq("project_id", projectId);
 
   revalidatePath(`/projects/${projectId}/settings`);
 }
@@ -155,8 +271,14 @@ export async function createTask(projectId: string, formData: FormData) {
   const owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
   const status = (formData.get("status") as TaskStatus) || "todo";
+  const due_date_raw = formData.get("due_date") as string | null;
+  const due_time_raw = (formData.get("due_time") as string | null) || "";
 
   if (!title?.trim()) throw new Error("Title is required");
+  if (!due_date_raw?.trim()) throw new Error("Due date is required");
+
+  // Time is optional — default to midnight local time if not provided.
+  const due_date = new Date(`${due_date_raw}T${due_time_raw || "00:00"}`).toISOString();
 
   const { data: task, error } = await supabase
     .from("tasks")
@@ -167,6 +289,7 @@ export async function createTask(projectId: string, formData: FormData) {
       owner_id: owner_id || null,
       ai_tool: ai_tool || null,
       status,
+      due_date,
       created_by: user.id,
     })
     .select()
@@ -200,6 +323,11 @@ export async function updateTask(
   const owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
   const status = formData.get("status") as TaskStatus;
+  const due_date_raw = formData.get("due_date") as string | null;
+  const due_time_raw = (formData.get("due_time") as string | null) || "";
+
+  if (!due_date_raw?.trim()) throw new Error("Due date is required");
+  const due_date = new Date(`${due_date_raw}T${due_time_raw || "00:00"}`).toISOString();
 
   // Get previous state and do update in parallel
   const [{ data: prev }, { error }] = await Promise.all([
@@ -210,6 +338,7 @@ export async function updateTask(
       owner_id: owner_id || null,
       ai_tool: ai_tool || null,
       status,
+      due_date,
     }).eq("id", taskId),
   ]);
 

@@ -25,7 +25,8 @@ export default async function TasksPage({
     supabase
       .from("project_members")
       .select("user_id, role, user:users(id, display_name, email, avatar_url)")
-      .eq("project_id", projectId),
+      .eq("project_id", projectId)
+      .eq("status", "active"),
   ]);
 
   routeBenchTimer().log(`/projects/${projectId}/tasks`);

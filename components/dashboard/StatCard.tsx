@@ -26,7 +26,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "glass-panel p-6 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow",
+        "glass-panel p-6 hover:shadow-[0_0_0_1px_rgb(var(--color-on-surface)/0.1)] transition-shadow",
         variantClasses[variant]
       )}
     >

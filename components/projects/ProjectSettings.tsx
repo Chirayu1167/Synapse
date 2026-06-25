@@ -3,17 +3,18 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import type { Project, ProjectMember, PendingInvite } from "@/lib/types";
-import { updateProject, deleteProject, inviteMember, removeMember, cancelInvite } from "@/lib/actions";
+import { updateProject, deleteProject, inviteMember, removeMember, cancelInvite, approveMembershipRequest, rejectMembershipRequest } from "@/lib/actions";
 import { initials } from "@/lib/utils";
 
 interface Props {
   project: Project;
   members: ProjectMember[];
   pendingInvites: PendingInvite[];
+  membershipRequests: ProjectMember[];
   currentUserId: string;
 }
 
-export default function ProjectSettings({ project, members, pendingInvites, currentUserId }: Props) {
+export default function ProjectSettings({ project, members, pendingInvites, membershipRequests, currentUserId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -135,6 +136,36 @@ export default function ProjectSettings({ project, members, pendingInvites, curr
           })}
         </div>
 
+        {membershipRequests.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-outline-variant/20">
+            <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-3">
+              Awaiting your approval
+            </p>
+            <div className="space-y-2">
+              {membershipRequests.map((request: any) => {
+                const u = request.user;
+                return (
+                  <div key={request.id} className="flex items-center justify-between py-2 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {u?.avatar_url ? (
+                        <Image src={u.avatar_url} alt="" width={28} height={28} className="rounded-full shrink-0 border border-outline-variant/30" />
+                      ) : (
+                        <div className="w-[28px] h-[28px] rounded-full border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container text-on-surface-variant/70 text-[10px] font-mono font-semibold">
+                          {initials(u?.display_name, u?.email)}
+                        </div>
+                      )}
+                      <span className="text-[12px] font-mono text-on-surface-variant truncate">
+                        {u?.display_name ?? u?.email}
+                      </span>
+                    </div>
+                    <ApproveRejectButtons projectId={project.id} requestId={request.id} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {pendingInvites.length > 0 && (
           <div className="mt-5 pt-4 border-t border-outline-variant/20">
             <p className="text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40 mb-3">Pending invites</p>
@@ -202,6 +233,28 @@ function RemoveMemberButton({ projectId, userId, name }: { projectId: string; us
     >
       Remove
     </button>
+  );
+}
+
+function ApproveRejectButtons({ projectId, requestId }: { projectId: string; requestId: string }) {
+  const [isPending, startTransition] = useTransition();
+  return (
+    <div className="flex items-center gap-3 shrink-0">
+      <button
+        onClick={() => startTransition(() => approveMembershipRequest(requestId, projectId))}
+        disabled={isPending}
+        className="text-[10px] font-mono uppercase tracking-widest text-on-surface hover:underline"
+      >
+        Approve
+      </button>
+      <button
+        onClick={() => startTransition(() => rejectMembershipRequest(requestId, projectId))}
+        disabled={isPending}
+        className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/30 hover:text-error transition-colors"
+      >
+        Reject
+      </button>
+    </div>
   );
 }
 

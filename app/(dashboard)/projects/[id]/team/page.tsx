@@ -40,7 +40,8 @@ export default async function TeamPage({
           updated_at
         )
       `)
-      .eq("project_id", projectId),
+      .eq("project_id", projectId)
+      .eq("status", "active"),
     supabase
       .from("tasks")
       .select("*, owner:users!tasks_owner_id_fkey(id, display_name, email, avatar_url)")

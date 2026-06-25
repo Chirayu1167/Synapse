@@ -3,6 +3,111 @@
 @tailwind utilities;
 
 @layer base {
+  /* Theme tokens: Synapse OS supports a dark theme (default, current
+     monochrome look) and a light "bright mode" (warm white surfaces with
+     orange, amber, and red accents). Tailwind colors all resolve through
+     these CSS variables, so toggling the dark or light class on the html
+     element swaps every color utility at once with no component changes. */
+  .dark {
+    --color-on-secondary: 49 48 48;  /* #313030 */
+    --color-tertiary-fixed-dim: 200 198 197;  /* #c8c6c5 */
+    --color-on-error-container: 255 218 214;  /* #ffdad6 */
+    --color-on-tertiary-container: 101 100 100;  /* #656464 */
+    --color-on-secondary-fixed: 28 27 27;  /* #1c1b1b */
+    --color-surface-container-high: 42 42 42;  /* #2a2a2a */
+    --color-secondary: 201 198 197;  /* #c9c6c5 */
+    --color-on-tertiary-fixed: 28 27 27;  /* #1c1b1b */
+    --color-primary: 255 255 255;  /* #ffffff */
+    --color-surface-container-low: 28 27 27;  /* #1c1b1b */
+    --color-error: 255 180 171;  /* #ffb4ab */
+    --color-secondary-fixed-dim: 201 198 197;  /* #c9c6c5 */
+    --color-on-background: 229 226 225;  /* #e5e2e1 */
+    --color-tertiary-fixed: 229 226 225;  /* #e5e2e1 */
+    --color-on-primary-fixed: 26 28 28;  /* #1a1c1c */
+    --color-on-error: 105 0 5;  /* #690005 */
+    --color-surface: 20 19 19;  /* #141313 */
+    --color-secondary-container: 74 73 73;  /* #4a4949 */
+    --color-on-tertiary-fixed-variant: 71 71 70;  /* #474746 */
+    --color-primary-fixed-dim: 198 198 199;  /* #c6c6c7 */
+    --color-inverse-on-surface: 49 48 48;  /* #313030 */
+    --color-on-secondary-fixed-variant: 71 70 70;  /* #474646 */
+    --color-primary-fixed: 226 226 226;  /* #e2e2e2 */
+    --color-on-primary-container: 99 101 101;  /* #636565 */
+    --color-inverse-primary: 93 95 95;  /* #5d5f5f */
+    --color-surface-tint: 198 198 199;  /* #c6c6c7 */
+    --color-on-surface: 229 226 225;  /* #e5e2e1 */
+    --color-on-primary-fixed-variant: 69 71 71;  /* #454747 */
+    --color-on-primary: 47 49 49;  /* #2f3131 */
+    --color-surface-variant: 53 52 52;  /* #353434 */
+    --color-primary-container: 226 226 226;  /* #e2e2e2 */
+    --color-on-surface-variant: 196 199 200;  /* #c4c7c8 */
+    --color-inverse-surface: 229 226 225;  /* #e5e2e1 */
+    --color-secondary-fixed: 229 226 225;  /* #e5e2e1 */
+    --color-surface-container-lowest: 14 14 14;  /* #0e0e0e */
+    --color-tertiary: 255 255 255;  /* #ffffff */
+    --color-surface-container: 32 31 31;  /* #201f1f */
+    --color-outline: 142 145 146;  /* #8e9192 */
+    --color-background: 20 19 19;  /* #141313 */
+    --color-on-secondary-container: 186 184 183;  /* #bab8b7 */
+    --color-outline-variant: 68 71 72;  /* #444748 */
+    --color-surface-dim: 20 19 19;  /* #141313 */
+    --color-error-container: 147 0 10;  /* #93000a */
+    --color-surface-container-highest: 53 52 52;  /* #353434 */
+    --color-tertiary-container: 229 226 225;  /* #e5e2e1 */
+    --color-surface-bright: 58 57 57;  /* #3a3939 */
+    --color-on-tertiary: 49 48 48;  /* #313030 */
+  }
+
+  .light {
+    --color-on-secondary: 255 255 255;  /* #ffffff */
+    --color-tertiary-fixed-dim: 233 205 165;  /* #e9cda5 */
+    --color-on-error-container: 107 23 15;  /* #6b170f */
+    --color-on-tertiary-container: 90 62 22;  /* #5a3e16 */
+    --color-on-secondary-fixed: 54 43 18;  /* #362b12 */
+    --color-surface-container-high: 238 235 231;  /* #eeebe7 */
+    --color-secondary: 139 106 29;  /* #8b6a1d */
+    --color-on-tertiary-fixed: 54 39 18;  /* #362712 */
+    --color-primary: 179 91 15;  /* #b35b0f */
+    --color-surface-container-low: 248 247 246;  /* #f8f7f6 */
+    --color-error: 182 36 22;  /* #b62416 */
+    --color-secondary-fixed-dim: 235 213 162;  /* #ebd5a2 */
+    --color-on-background: 40 36 31;  /* #28241f */
+    --color-tertiary-fixed: 243 227 206;  /* #f3e3ce */
+    --color-on-primary-fixed: 57 34 14;  /* #39220e */
+    --color-on-error: 255 255 255;  /* #ffffff */
+    --color-surface: 251 250 249;  /* #fbfaf9 */
+    --color-secondary-container: 247 237 212;  /* #f7edd4 */
+    --color-on-tertiary-fixed-variant: 111 78 32;  /* #6f4e20 */
+    --color-primary-fixed-dim: 241 196 157;  /* #f1c49d */
+    --color-inverse-on-surface: 246 245 244;  /* #f6f5f4 */
+    --color-on-secondary-fixed-variant: 111 87 32;  /* #6f5720 */
+    --color-primary-fixed: 247 223 201;  /* #f7dfc9 */
+    --color-on-primary-container: 95 53 17;  /* #5f3511 */
+    --color-inverse-primary: 242 188 140;  /* #f2bc8c */
+    --color-surface-tint: 179 91 15;  /* #b35b0f */
+    --color-on-surface: 40 36 31;  /* #28241f */
+    --color-on-primary-fixed-variant: 118 68 25;  /* #764419 */
+    --color-on-primary: 255 255 255;  /* #ffffff */
+    --color-surface-variant: 234 230 225;  /* #eae6e1 */
+    --color-primary-container: 249 228 210;  /* #f9e4d2 */
+    --color-on-surface-variant: 97 87 76;  /* #61574c */
+    --color-inverse-surface: 56 51 46;  /* #38332e */
+    --color-secondary-fixed: 244 232 205;  /* #f4e8cd */
+    --color-surface-container-lowest: 255 255 255;  /* #ffffff */
+    --color-tertiary: 147 95 21;  /* #935f15 */
+    --color-surface-container: 244 242 240;  /* #f4f2f0 */
+    --color-outline: 145 128 110;  /* #91806e */
+    --color-background: 251 250 249;  /* #fbfaf9 */
+    --color-on-secondary-container: 87 68 25;  /* #574419 */
+    --color-outline-variant: 219 212 205;  /* #dbd4cd */
+    --color-surface-dim: 238 235 231;  /* #eeebe7 */
+    --color-error-container: 249 218 215;  /* #f9dad7 */
+    --color-surface-container-highest: 230 224 219;  /* #e6e0db */
+    --color-tertiary-container: 245 232 214;  /* #f5e8d6 */
+    --color-surface-bright: 255 255 255;  /* #ffffff */
+    --color-on-tertiary: 255 255 255;  /* #ffffff */
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -21,11 +126,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #444748;
+    background: rgb(var(--color-outline-variant));
     border-radius: 1.6px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #8e9192;
+    background: rgb(var(--color-outline));
   }
 
   .material-symbols-outlined {
@@ -41,10 +146,10 @@
 @layer components {
   /* Glass panel — the core Stitch surface */
   .glass-panel {
-    background: rgba(10, 10, 10, 0.7);
+    background: rgb(var(--color-surface-container-low) / 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 0.8px solid rgba(255, 255, 255, 0.05);
+    border: 0.8px solid rgb(var(--color-on-surface) / 0.05);
     border-radius: 3.2px;
   }
 
@@ -160,7 +265,7 @@
   }
 
   .card-interactive:hover {
-    box-shadow: 0 0 0 0.8px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 0 0.8px rgb(var(--color-on-surface) / 0.1);
   }
 
   /* Enhanced Hover States */

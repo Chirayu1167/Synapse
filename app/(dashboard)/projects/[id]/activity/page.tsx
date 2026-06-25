@@ -20,6 +20,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
     todo: "checklist",
     project: "hub",
     context: "link",
+    member_request: "group_add",
   };
 
   return (

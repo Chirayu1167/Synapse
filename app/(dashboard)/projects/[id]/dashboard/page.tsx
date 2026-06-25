@@ -37,8 +37,9 @@ export default async function DashboardPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("project_members")
-      .select("id, project_id, user_id, role, joined_at, user:users(id, email, display_name, avatar_url, created_at, updated_at)")
-      .eq("project_id", projectId),
+      .select("id, project_id, user_id, role, joined_at, status, requested_at, approved_at, user:users(id, email, display_name, avatar_url, created_at, updated_at)")
+      .eq("project_id", projectId)
+      .eq("status", "active"),
     supabase
       .from("projects")
       .select("id, name, description, owner_id, created_at, updated_at")

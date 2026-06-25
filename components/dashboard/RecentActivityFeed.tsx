@@ -95,6 +95,7 @@ export function RecentActivityFeed({
                     todo: "checklist",
                     project: "hub",
                     context: "link",
+                    member_request: "group_add",
                   }[activity.entity_type] ?? "circle"}
                 </span>
               </div>

@@ -28,6 +28,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
       .select("role")
       .eq("project_id", id)
       .eq("user_id", user.id)
+      .eq("status", "active")
       .single(),
   ]);
 

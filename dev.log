@@ -1,0 +1,43 @@
+
+> synapse@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.29.3:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.2s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 566ms (169 modules)
+ ○ Compiling /projects/new ...
+ ✓ Compiled /projects/new in 4.1s (746 modules)
+ ✓ Compiled in 1250ms (257 modules)
+ ⨯ [Error: {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"projects\""}] {
+  digest: '1154771073'
+}
+ POST /projects/new 500 in 7109ms
+ ○ Compiling /projects ...
+ ✓ Compiled /projects in 756ms (734 modules)
+ GET /projects 200 in 2911ms
+ GET /projects/new 200 in 88ms
+ ⨯ [Error: {"code":"42501","details":null,"hint":null,"message":"new row violates ✓ Compiled in 850ms (491 modules)
+ ✓ Compiled in 691ms (491 modules)
+73'
+}
+ POST /projects/new 500 in 919ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 805ms (734 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /login 200 in 1558ms
+ GET /projects/new 200 in 1101ms
+ POST /login 303 in 73ms
+ ✓ Compiled /projects in 351ms (493 modules)
+ GET /projects 200 in 2253ms
+ GET /projects/new 200 in 162ms
+ GET /login 200 in 95ms
+ POST /projects/new 303 in 727ms
+ POST /login 303 in 41ms
+ ✓ Compiled in 1040ms (493 modules)
+ ✓ Compiled in 618ms (493 modules)

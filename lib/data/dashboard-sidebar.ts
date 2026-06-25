@@ -22,12 +22,22 @@ function normalizeJoinedProject(
 export const getDashboardSidebarData = cache(async (userId: string) => {
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: memberships }] = await Promise.all([
+  const [{ data: profile }, { data: memberships }, { data: ownRequests }] = await Promise.all([
     supabase.from("users").select("*").eq("id", userId).single(),
     supabase
       .from("project_members")
       .select("projects(id, name)")
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .eq("status", "active"),
+    // Invites this user has received (status='invited') or already accepted
+    // and is waiting on the owner to approve (status='pending_approval').
+    // They are NOT a project member yet — this is only ever the user's own
+    // row, never something that grants them access to the project itself.
+    supabase
+      .from("project_members")
+      .select("id, status, project_id, projects(id, name)")
+      .eq("user_id", userId)
+      .in("status", ["invited", "pending_approval"]),
   ]);
 
   const projects = (memberships ?? [])
@@ -38,5 +48,11 @@ export const getDashboardSidebarData = cache(async (userId: string) => {
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return { profile, projects };
+  const requests = (ownRequests ?? []).map((r: any) => ({
+    id: r.id,
+    status: r.status as "invited" | "pending_approval",
+    project: normalizeJoinedProject(r.projects)[0] ?? null,
+  }));
+
+  return { profile, projects, requests };
 });

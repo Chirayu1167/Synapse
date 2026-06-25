@@ -20,13 +20,19 @@ export type Project = {
   updated_at: string;
 };
 
+export type MembershipStatus = "invited" | "pending_approval" | "active";
+
 export type ProjectMember = {
   id: string;
   project_id: string;
   user_id: string;
   role: "owner" | "member";
   joined_at: string;
+  status: MembershipStatus;
+  requested_at: string | null;
+  approved_at: string | null;
   user?: UserProfile;
+  project?: { id: string; name: string };
 };
 
 export type PendingInvite = {
@@ -74,7 +80,7 @@ export type ActivityLog = {
   project_id: string;
   actor_id: string;
   action: string;
-  entity_type: "task" | "todo" | "project" | "context" | null;
+  entity_type: "task" | "todo" | "project" | "context" | "member_request" | null;
   entity_id: string | null;
   entity_title: string | null;
   created_at: string;
@@ -121,6 +127,32 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
   testing: "border border-outline-variant/30 text-on-surface-variant/50",
   done: "border border-outline-variant/20 text-on-surface-variant/60",
 };
+
+// Filled style applied to whichever status currently has the most tasks,
+// so the pipeline visualization highlights where work is concentrated
+// instead of every circle rendering as the same flat/hollow outline.
+export const STATUS_COLORS_ACTIVE: Record<TaskStatus, string> = {
+  unassigned: "bg-primary text-on-primary border border-primary",
+  todo: "bg-primary text-on-primary border border-primary",
+  in_progress: "bg-primary text-on-primary border border-primary",
+  testing: "bg-primary text-on-primary border border-primary",
+  done: "bg-primary text-on-primary border border-primary",
+};
+
+/** Returns the TaskStatus with the highest count, or null if all counts are 0 (ties keep the first/leftmost column order). */
+export function getMaxStatus(
+  counts: Record<TaskStatus, number>,
+  order: TaskStatus[]
+): TaskStatus | null {
+  let max: TaskStatus | null = null;
+  for (const status of order) {
+    const count = counts[status] ?? 0;
+    if (count > 0 && (max === null || count > (counts[max] ?? 0))) {
+      max = status;
+    }
+  }
+  return max;
+}
 
 export const TOOL_COLORS: Record<string, string> = {
   Claude:  "border border-outline-variant/30 text-on-surface-variant",

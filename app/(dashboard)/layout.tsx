@@ -5,12 +5,14 @@ import { getAuthUser } from "@/lib/supabase/server";
 import { getDashboardSidebarData } from "@/lib/data/dashboard-sidebar";
 import { signOut } from "@/lib/actions";
 import { initials } from "@/lib/utils";
+import RequestsSection from "@/components/dashboard/RequestsSection";
+import ThemeToggle from "@/components/dashboard/ThemeToggle";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getAuthUser();
   if (!user) redirect("/login");
 
-  const { profile, projects } = await getDashboardSidebarData(user.id);
+  const { profile, projects, requests } = await getDashboardSidebarData(user.id);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -37,6 +39,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavItem href="/projects" icon="folder_open" label="Projects" />
           <NavItem href="/ai-usage" icon="analytics" label="AI Usage" />
 
+          <RequestsSection requests={requests} />
+
           {projects && projects.length > 0 && (
             <div className="mt-7">
               <p className="px-6 mb-2 text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/40">
@@ -58,6 +62,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         {/* Footer */}
         <div className="border-t border-outline-variant/20 p-5">
+          <div className="mb-2">
+            <ThemeToggle />
+          </div>
           <div className="flex items-center gap-3 mb-4">
             {profile?.avatar_url ? (
               <Image
