@@ -57,7 +57,7 @@ export default async function DashboardPage({
 
   const processedMembers = members?.map(m => ({
     ...m,
-    user: m.user[0]
+    user: Array.isArray(m.user) ? m.user[0] : m.user, // Ensure user is an object, not an array
   })) ?? [];
 
   // Apply filters (owner and tool) similar to TaskBoard
