@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
+import { ensureUserProfile } from "@/lib/users";
 import type { TaskStatus } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
@@ -35,17 +36,22 @@ export async function signOut() {
 export async function createProject(formData: FormData) {
   const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
+  await ensureUserProfile(supabase, user);
 
   const name = formData.get("name") as string;
   const description = formData.get("description") as string | null;
 
   if (!name?.trim()) throw new Error("Project name is required");
 
-  const { data: project, error: projectError } = await supabase
+  const project = { id: crypto.randomUUID(), name: name.trim() };
+  const { error: projectError } = await supabase
     .from("projects")
-    .insert({ name: name.trim(), description: description?.trim() || null, owner_id: user.id })
-    .select("id, name")
-    .single();
+    .insert({
+      id: project.id,
+      name: project.name,
+      description: description?.trim() || null,
+      owner_id: user.id,
+    });
 
   if (projectError) throw projectError;
 

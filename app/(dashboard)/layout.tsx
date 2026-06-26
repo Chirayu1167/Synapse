@@ -5,14 +5,19 @@ import { getAuthUser } from "@/lib/supabase/server";
 import { getDashboardSidebarData } from "@/lib/data/dashboard-sidebar";
 import { signOut } from "@/lib/actions";
 import { initials } from "@/lib/utils";
+import { ensureUserProfile, profileFromAuthUser } from "@/lib/users";
 import RequestsSection from "@/components/dashboard/RequestsSection";
 import ThemeToggle from "@/components/dashboard/ThemeToggle";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await getAuthUser();
+  const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
+  await ensureUserProfile(supabase, user).catch((error) => {
+    console.error("Failed to ensure user profile", error);
+  });
   const { profile, projects, requests } = await getDashboardSidebarData(user.id);
+  const displayProfile = profile ?? profileFromAuthUser(user);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -66,24 +71,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <ThemeToggle />
           </div>
           <div className="flex items-center gap-3 mb-4">
-            {profile?.avatar_url ? (
+            {displayProfile.avatar_url ? (
               <Image
-                src={profile.avatar_url}
-                alt={profile.display_name ?? "avatar"}
+                src={displayProfile.avatar_url}
+                alt={displayProfile.display_name ?? "avatar"}
                 width={36}
                 height={36}
                 className="rounded-full shrink-0 border border-outline-variant/30"
               />
             ) : (
               <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container text-on-surface-variant text-xs font-mono font-semibold">
-                {initials(profile?.display_name, profile?.email)}
+                {initials(displayProfile.display_name, displayProfile.email)}
               </div>
             )}
             <div className="min-w-0">
               <p className="text-on-surface text-sm font-mono truncate">
-                {profile?.display_name ?? "You"}
+                {displayProfile.display_name ?? "You"}
               </p>
-              <p className="text-on-surface-variant/50 text-xs font-mono truncate">{profile?.email}</p>
+              <p className="text-on-surface-variant/50 text-xs font-mono truncate">{displayProfile.email}</p>
             </div>
           </div>
           <form action={signOut}>
