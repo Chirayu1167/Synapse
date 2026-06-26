@@ -237,7 +237,7 @@ create policy "Users can update their own profile"
 -- ---- projects ----
 create policy "Members can view their projects"
   on public.projects for select
-  using (public.is_project_member(id));
+  using (public.is_project_member(id) or owner_id = auth.uid());
 
 create policy "Authenticated users can create projects"
   on public.projects for insert

@@ -41,30 +41,31 @@ export async function createProject(formData: FormData) {
 
   if (!name?.trim()) throw new Error("Project name is required");
 
-  const { data: project, error } = await supabase
+  const { data: project, error: projectError } = await supabase
     .from("projects")
     .insert({ name: name.trim(), description: description?.trim() || null, owner_id: user.id })
-    .select()
+    .select("id, name")
     .single();
 
-  if (error) throw error;
+  if (projectError) throw projectError;
 
-  // Add owner as member and log activity in parallel
-  await Promise.all([
-    supabase.from("project_members").insert({
-      project_id: project.id,
-      user_id: user.id,
-      role: "owner",
-    }),
-    supabase.from("activity_log").insert({
-      project_id: project.id,
-      actor_id: user.id,
-      action: "created this project",
-      entity_type: "project",
-      entity_id: project.id,
-      entity_title: project.name,
-    }),
-  ]);
+  const { error: memberError } = await supabase.from("project_members").insert({
+    project_id: project.id,
+    user_id: user.id,
+    role: "owner",
+    status: "active",
+  });
+  if (memberError) throw memberError;
+
+  const { error: activityError } = await supabase.from("activity_log").insert({
+    project_id: project.id,
+    actor_id: user.id,
+    action: "created this project",
+    entity_type: "project",
+    entity_id: project.id,
+    entity_title: project.name,
+  });
+  if (activityError) throw activityError;
 
   revalidatePath("/projects");
   redirect(`/projects/${project.id}/tasks`);
