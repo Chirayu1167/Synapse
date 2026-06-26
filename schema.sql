@@ -191,7 +191,7 @@ alter table public.context_entries   enable row level security;
 
 -- Helper function: is the current user a member of a given project?
 create or replace function public.is_project_member(p_project_id uuid)
-returns boolean language sql security definer stable as $$
+returns boolean language sql security definer stable set search_path = public as $$
   select exists (
     select 1 from public.project_members
     where project_id = p_project_id
@@ -201,12 +201,24 @@ $$;
 
 -- Helper function: is the current user the owner of a given project?
 create or replace function public.is_project_owner(p_project_id uuid)
-returns boolean language sql security definer stable as $$
+returns boolean language sql security definer stable set search_path = public as $$
   select exists (
     select 1 from public.project_members
     where project_id = p_project_id
       and user_id    = auth.uid()
       and role       = 'owner'
+  );
+$$;
+
+create or replace function public.can_view_user_profile(p_user_id uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1
+    from public.project_members pm_self
+    join public.project_members pm_other
+      on pm_other.project_id = pm_self.project_id
+    where pm_self.user_id = auth.uid()
+      and pm_other.user_id = p_user_id
   );
 $$;
 
@@ -217,14 +229,7 @@ create policy "Users can view their own profile"
 
 create policy "Users can view profiles of project co-members"
   on public.users for select
-  using (
-    exists (
-      select 1 from public.project_members pm1
-      join public.project_members pm2 on pm1.project_id = pm2.project_id
-      where pm1.user_id = auth.uid()
-        and pm2.user_id = users.id
-    )
-  );
+  using (public.can_view_user_profile(id));
 
 create policy "Users can insert their own profile"
   on public.users for insert
