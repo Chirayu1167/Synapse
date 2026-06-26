@@ -26,6 +26,13 @@ export async function ensureUserProfile(supabase: SupabaseClient, user: User) {
   const profile = profileFromAuthUser(user);
   if (!profile.email) throw new Error("Authenticated user is missing an email address");
 
+  const { error: rpcError } = await supabase.rpc("ensure_user_profile", {
+    profile_email: profile.email,
+    profile_display_name: profile.display_name,
+    profile_avatar_url: profile.avatar_url,
+  });
+  if (!rpcError) return profile;
+
   const { error } = await supabase.from("users").upsert(profile, {
     onConflict: "id",
   });

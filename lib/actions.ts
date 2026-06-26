@@ -43,13 +43,28 @@ export async function createProject(formData: FormData) {
 
   if (!name?.trim()) throw new Error("Project name is required");
 
-  const project = { id: crypto.randomUUID(), name: name.trim() };
+  const trimmedName = name.trim();
+  const trimmedDescription = description?.trim() || null;
+
+  const { data: rpcProjectId, error: rpcError } = await supabase.rpc(
+    "create_project_for_current_user",
+    {
+      project_name: trimmedName,
+      project_description: trimmedDescription,
+    }
+  );
+  if (!rpcError && rpcProjectId) {
+    revalidatePath("/projects");
+    redirect(`/projects/${rpcProjectId}/tasks`);
+  }
+
+  const project = { id: crypto.randomUUID(), name: trimmedName };
   const { error: projectError } = await supabase
     .from("projects")
     .insert({
       id: project.id,
       name: project.name,
-      description: description?.trim() || null,
+      description: trimmedDescription,
       owner_id: user.id,
     });
 
@@ -71,7 +86,9 @@ export async function createProject(formData: FormData) {
     entity_id: project.id,
     entity_title: project.name,
   });
-  if (activityError) throw activityError;
+  if (activityError) {
+    console.error("Failed to log project creation", activityError);
+  }
 
   revalidatePath("/projects");
   redirect(`/projects/${project.id}/tasks`);
