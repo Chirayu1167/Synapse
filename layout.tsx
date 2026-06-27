@@ -1,3 +1,5 @@
+"use client";
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,21 +20,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
     console.error("Failed to ensure user profile", error);
   });
 
-  // State for sidebar data that will be periodically refreshed
+  // State for sidebar data that will be periodically refresved
   const [sidebarData, setSidebarData] = useState<{
     profile: any;
     projects: any[];
     requests: any[];
   } | null>(null);
-  const [displayProfile, setDisplayProfile] = useState(null);
 
   // Fetch initial data and set up periodic refresh
   useEffect(() => {
     const fetchData = async () => {
       const { profile, projects, requests } = await getDashboardSidebarData(user.id);
-      const displayProfileData = profile ?? profileFromAuthUser(user);
       setSidebarData({ profile, projects, requests });
-      setDisplayProfile(displayProfileData);
     };
 
     // Fetch initial data
@@ -47,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // If data hasn't loaded yet, show loading state or redirect
   if (!sidebarData) {
-    // Return a minimal layout while loading
+    const tempDisplayProfile = profileFromAuthUser(user);
     return (
       <div className="flex h-screen overflow-hidden bg-background">
         {/* Sidebar */}
@@ -90,25 +89,34 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <ThemeToggle />
             </div>
             <div className="flex items-center gap-3 mb-4">
-              {/* Placeholder for avatar */}
-              <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container text-on-surface-variant text-xs font-mono font-semibold">
-                {user?.email ? user.email.slice(0, 2).toUpperCase() : "??"}
-              </div>
+              {tempDisplayProfile.avatar_url ? (
+                <Image
+                  src={tempDisplayProfile.avatar_url}
+                  alt={tempDisplayProfile.display_name ?? "avatar"}
+                  width={36}
+                  height={36}
+                  className="rounded-full shrink-0 border border-outline-variant/30"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container text-on-surface-variant text-xs font-mono font-semibold">
+                  {initials(tempDisplayProfile.display_name, tempDisplayProfile.email)}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-on-surface text-sm font-mono truncate">
-                  {user?.display_name ?? user?.email?.split('@')[0] ?? "You"}
+                  {tempDisplayProfile.display_name ?? "You"}
                 </p>
-                <p className="text-on-surface-variant/50 text-xs font-mono truncate">{user?.email}</p>
+                <p className="text-on-surface-variant/50 text-xs font-mono truncate">{tempDisplayProfile.email}</p>
               </div>
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  className="w-full text-left px-4 py-2 rounded text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/50 hover:text-on-surface hover:bg-surface-container transition-colors"
-                >
-                  Sign out
-                </button>
-              </form>
             </div>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="w-full text-left px-4 py-2 rounded text-[11px] font-mono uppercase tracking-widest text-on-surface-variant/50 hover:text-on-surface hover:bg-surface-container transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </aside>
 
@@ -122,7 +130,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // Destructure sidebar data for use in the template
   const { profile, projects, requests } = sidebarData!;
-  const finalDisplayProfile = displayProfile ?? (profile ?? profileFromAuthUser(user));
+  const displayProfile = profile ?? profileFromAuthUser(user);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -176,24 +184,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <ThemeToggle />
           </div>
           <div className="flex items-center gap-3 mb-4">
-            {finalDisplayProfile.avatar_url ? (
+            {displayProfile.avatar_url ? (
               <Image
-                src={finalDisplayProfile.avatar_url}
-                alt={finalDisplayProfile.display_name ?? "avatar"}
+                src={displayProfile.avatar_url}
+                alt={displayProfile.display_name ?? "avatar"}
                 width={36}
                 height={36}
                 className="rounded-full shrink-0 border border-outline-variant/30"
               />
             ) : (
               <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container text-on-surface-variant text-xs font-mono font-semibold">
-                {initials(finalDisplayProfile.display_name, finalDisplayProfile.email)}
+                {initials(displayProfile.display_name, displayProfile.email)}
               </div>
             )}
             <div className="min-w-0">
               <p className="text-on-surface text-sm font-mono truncate">
-                {finalDisplayProfile.display_name ?? "You"}
+                {displayProfile.display_name ?? "You"}
               </p>
-              <p className="text-on-surface-variant/50 text-xs font-mono truncate">{finalDisplayProfile.email}</p>
+              <p className="text-on-surface-variant/50 text-xs font-mono truncate">{displayProfile.email}</p>
             </div>
           </div>
           <form action={signOut}>
