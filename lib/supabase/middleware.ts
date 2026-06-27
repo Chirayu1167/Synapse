@@ -31,8 +31,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Redirect unauthenticated users to login
-  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth")) {
+  // Redirect unauthenticated users to login, but allow API routes
+  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
