@@ -6,7 +6,7 @@ import { getDashboardSidebarData } from "@/lib/data/dashboard-sidebar";
 import { signOut } from "@/lib/actions";
 import { initials } from "@/lib/utils";
 import { ensureUserProfile, profileFromAuthUser } from "@/lib/users";
-import SidebarClient from "@/dashboard-sidebar-client";
+import SidebarClient from "../dashboard-sidebar-client";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { supabase, user } = await getAuthUser();

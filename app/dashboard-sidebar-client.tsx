@@ -22,8 +22,8 @@ export default function SidebarClient({
   initialUser
 }: SidebarProps) {
   const [profile, setProfile] = useState<any>(initialProfile ?? null);
-  const [projects, setProjects] = useState<any[]>(initialProps.initialProjects ?? []);
-  const [requests, setRequests] = useState<any[]>(initialProps.initialRequests ?? []);
+  const [projects, setProjects] = useState<any[]>(initialProjects ?? []);
+  const [requests, setRequests] = useState<any[]>(initialRequests ?? []);
 
   // Fetch initial data and set up periodic refresh
   useEffect(() => {
