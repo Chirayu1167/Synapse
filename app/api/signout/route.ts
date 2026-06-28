@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export async function POST(request: NextRequest) {
-  // Clear the session cookie
-  const cookieStore = await cookies();
-  cookieStore.delete("sb-access-token");
-  cookieStore.delete("sb-refresh-token");
+  const response = NextResponse.redirect(new URL("/login", request.url), {
+    status: 303,
+  });
 
-  return NextResponse.redirect(new URL("/login", request.url));
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  await supabase.auth.signOut();
+
+  return response;
 }

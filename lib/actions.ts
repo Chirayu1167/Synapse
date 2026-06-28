@@ -138,8 +138,9 @@ export async function inviteMember(projectId: string, formData: FormData) {
   const { data: existingUser } = await supabase
     .from("users")
     .select("id")
-    .eq("email", email)
-    .single();
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
 
   if (existingUser) {
     // Existing user: create a request that they must accept, and that the
