@@ -33,7 +33,7 @@ export async function signOut() {
 // PROJECTS
 // ============================================================
 
-export async function createProject(formData: FormData) {
+export async function createProjectAndReturnId(formData: FormData) {
   const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
   await ensureUserProfile(supabase, user);
@@ -55,7 +55,7 @@ export async function createProject(formData: FormData) {
   );
   if (!rpcError && rpcProjectId) {
     revalidatePath("/projects");
-    redirect(`/projects/${rpcProjectId}/tasks`);
+    return rpcProjectId as string;
   }
 
   const project = { id: crypto.randomUUID(), name: trimmedName };
@@ -91,7 +91,12 @@ export async function createProject(formData: FormData) {
   }
 
   revalidatePath("/projects");
-  redirect(`/projects/${project.id}/tasks`);
+  return project.id;
+}
+
+export async function createProject(formData: FormData) {
+  const projectId = await createProjectAndReturnId(formData);
+  redirect(`/projects/${projectId}/tasks`);
 }
 
 export async function updateProject(projectId: string, formData: FormData) {

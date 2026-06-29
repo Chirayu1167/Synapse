@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { createProject } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { createProjectAndReturnId } from "@/lib/actions";
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -10,17 +11,8 @@ function getErrorMessage(error: unknown) {
   return "Project creation failed. Check your Supabase migrations and try again.";
 }
 
-function isRedirectSignal(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "digest" in error &&
-    typeof (error as { digest?: unknown }).digest === "string" &&
-    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
-  );
-}
-
 export default function NewProjectForm() {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -29,10 +21,10 @@ export default function NewProjectForm() {
     setError("");
     startTransition(async () => {
       try {
-        await createProject(formData);
+        const projectId = await createProjectAndReturnId(formData);
         formRef.current?.reset();
+        router.push(`/projects/${projectId}/tasks`);
       } catch (err) {
-        if (isRedirectSignal(err)) throw err;
         setError(getErrorMessage(err));
       }
     });
