@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { createProjectAndReturnId } from "@/lib/actions";
+import { createProject } from "@/lib/actions";
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -12,18 +11,26 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function NewProjectForm() {
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  function handleSubmit(formData: FormData) {
+  function handleSubmit() {
+    const form = formRef.current;
+    if (!form) return;
+
     setError("");
+    const formData = new FormData(form);
+    if (!(formData.get("name") as string)?.trim()) {
+      setError("Project name is required");
+      return;
+    }
+
     startTransition(async () => {
       try {
-        const projectId = await createProjectAndReturnId(formData);
-        formRef.current?.reset();
-        router.push(`/projects/${projectId}/tasks`);
+        // createProject() inserts the row, revalidates /projects, and
+        // redirects to /projects/${id}/tasks on success.
+        await createProject(formData);
       } catch (err) {
         setError(getErrorMessage(err));
       }
@@ -32,7 +39,7 @@ export default function NewProjectForm() {
 
   return (
     <div className="glass-panel p-6">
-      <form ref={formRef} action={handleSubmit} className="space-y-5">
+      <form ref={formRef} className="space-y-5" onSubmit={(e) => e.preventDefault()}>
         <div>
           <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">
             Project name <span className="text-error">*</span>
@@ -71,7 +78,12 @@ export default function NewProjectForm() {
         )}
 
         <div className="flex items-center gap-3 pt-2 border-t border-outline-variant/20">
-          <button type="submit" disabled={isPending} className="btn-primary">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isPending}
+            className="btn-primary"
+          >
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
               {isPending ? "progress_activity" : "rocket_launch"}
             </span>
