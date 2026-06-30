@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createProject } from "@/lib/actions";
 
 function getErrorMessage(error: unknown) {
@@ -29,9 +30,11 @@ export default function NewProjectForm() {
     startTransition(async () => {
       try {
         // createProject() inserts the row, revalidates /projects, and
-        // redirects to /projects/${id}/tasks on success.
+        // throws a NEXT_REDIRECT when it's done. We must let that throw
+        // escape so Next.js can perform the redirect.
         await createProject(formData);
       } catch (err) {
+        if (isRedirectError(err)) throw err;
         setError(getErrorMessage(err));
       }
     });
