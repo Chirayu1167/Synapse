@@ -18,23 +18,32 @@ export default function NewProjectForm() {
 
   function handleSubmit() {
     const form = formRef.current;
+    console.log("[NewProjectForm] handleSubmit fired, form?", !!form);
     if (!form) return;
 
     setError("");
     const formData = new FormData(form);
-    if (!(formData.get("name") as string)?.trim()) {
+    const name = (formData.get("name") as string) ?? "";
+    const description = (formData.get("description") as string) ?? "";
+    console.log("[NewProjectForm] formData", { name, description });
+    if (!name.trim()) {
       setError("Project name is required");
       return;
     }
 
     startTransition(async () => {
+      console.log("[NewProjectForm] startTransition: calling createProject");
       try {
-        // createProject() inserts the row, revalidates /projects, and
-        // throws a NEXT_REDIRECT when it's done. We must let that throw
-        // escape so Next.js can perform the redirect.
         await createProject(formData);
+        console.log("[NewProjectForm] createProject resolved (unexpected if redirect ran)");
       } catch (err) {
-        if (isRedirectError(err)) throw err;
+        const isRedirect = isRedirectError(err);
+        console.log("[NewProjectForm] caught error", {
+          isRedirect,
+          message: err instanceof Error ? err.message : String(err),
+          digest: err instanceof Error ? (err as any).digest : undefined,
+        });
+        if (isRedirect) throw err;
         setError(getErrorMessage(err));
       }
     });
