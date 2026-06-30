@@ -26,6 +26,9 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
     redirect("/login");
   }
 
+  const { data: whoami } = await supabase.rpc("debug_whoami");
+  console.error("[ProjectLayout] DEBUG whoami=", JSON.stringify(whoami));
+
   const [
     { data: project, error: projectError },
     { data: membership, error: membershipError },
