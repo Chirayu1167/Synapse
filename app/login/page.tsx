@@ -62,7 +62,7 @@ export default async function LoginPage({
         </div>
 
         <p className="text-on-surface-variant/40 text-[10px] font-mono-label uppercase tracking-widest">
-          © 2024 Synapse OS · All rights reserved
+          © 2026 Synapse OS · All rights reserved
         </p>
       </div>
     </div>
