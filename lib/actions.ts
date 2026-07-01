@@ -164,7 +164,7 @@ export async function inviteMember(projectId: string, formData: FormData) {
     if (error && error.code !== "23505") throw error;
 
     if (member) {
-      void supabase.from("activity_log").insert({
+      await supabase.from("activity_log").insert({
         project_id: projectId,
         actor_id: user.id,
         action: "invited to project",
@@ -201,7 +201,7 @@ export async function acceptMembershipRequest(memberRowId: string) {
   if (error) throw error;
 
   if (row) {
-    void supabase.from("activity_log").insert({
+    await supabase.from("activity_log").insert({
       project_id: row.project_id,
       actor_id: user.id,
       action: "accepted invite, awaiting approval",
@@ -245,7 +245,7 @@ export async function approveMembershipRequest(memberRowId: string, projectId: s
   if (error) throw error;
 
   if (row) {
-    void supabase.from("activity_log").insert({
+    await supabase.from("activity_log").insert({
       project_id: projectId,
       actor_id: user.id,
       action: "approved member",
@@ -415,30 +415,36 @@ export async function updateTask(
 
   if (error) throw error;
 
-  if (prev?.status !== status) {
-    // Only log the status change if it wasn't auto-forced by a reassignment
-    if (!wasReassigned) {
-      const label = STATUS_LABELS[status];
-      void supabase.from("activity_log").insert({
+  const activityInserts: Promise<any>[] = [];
+
+  if (prev?.status !== status && !wasReassigned) {
+    const label = STATUS_LABELS[status];
+    activityInserts.push(
+      supabase.from("activity_log").insert({
         project_id: projectId,
         actor_id: user.id,
         action: `changed status to ${label}`,
         entity_type: "task",
         entity_id: taskId,
         entity_title: title.trim(),
-      });
-    }
+      })
+    );
   }
+
   if (prev?.owner_id !== owner_id) {
-    void supabase.from("activity_log").insert({
-      project_id: projectId,
-      actor_id: user.id,
-      action: owner_id ? "assigned task to a member" : "unassigned task",
-      entity_type: "task",
-      entity_id: taskId,
-      entity_title: title.trim(),
-    });
+    activityInserts.push(
+      supabase.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: user.id,
+        action: owner_id ? "assigned task to a member" : "unassigned task",
+        entity_type: "task",
+        entity_id: taskId,
+        entity_title: title.trim(),
+      })
+    );
   }
+
+  if (activityInserts.length) await Promise.all(activityInserts);
 
   revalidatePath(`/projects/${projectId}/tasks`);
   revalidatePath(`/projects/${projectId}/activity`);
@@ -464,10 +470,8 @@ export async function updateTaskStatus(
 
   await supabase.from("tasks").update({ status }).eq("id", taskId);
 
-  // Use STATUS_LABELS from types for consistency
   const label = STATUS_LABELS[status];
-  // Fire activity log without blocking
-  supabase.from("activity_log").insert({
+  await supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: `changed status to ${label}`,
@@ -489,8 +493,7 @@ export async function deleteTask(taskId: string, projectId: string) {
     supabase.from("tasks").delete().eq("id", taskId),
   ]);
 
-  // Fire activity log without blocking
-  supabase.from("activity_log").insert({
+  await supabase.from("activity_log").insert({
     project_id: projectId,
     actor_id: user.id,
     action: "deleted task",
