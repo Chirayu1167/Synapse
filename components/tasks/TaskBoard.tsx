@@ -53,6 +53,7 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
 
   const byStatus = (status: TaskStatus) => filtered.filter((t) => t.status === status);
   const memberUsers = members.map((m: any) => m.user).filter(Boolean);
+  const isOwner = members.some((m: any) => m.user_id === currentUserId && m.role === "owner");
 
   // Assigned tasks awaiting acceptance (owner = current user, status = todo)
   const assignedTasks = tasks.filter(
@@ -159,6 +160,7 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
             projectId={projectId}
             members={memberUsers}
             currentUserId={currentUserId}
+            isOwner={isOwner}
             onStatusChange={handleStatusChange}
             onEdit={setEditTask}
             onAddClick={() => setShowCreate(status)}
@@ -223,6 +225,7 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
           defaultStatus={showCreate}
           members={memberUsers}
           currentUserId={currentUserId}
+          isOwner={isOwner}
           onClose={() => setShowCreate(null)}
         />
       )}
@@ -234,6 +237,7 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
           task={editTask}
           members={memberUsers}
           currentUserId={currentUserId}
+          isOwner={isOwner}
           onClose={() => setEditTask(null)}
         />
       )}
@@ -242,13 +246,14 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
 }
 
 function Column({
-  status, tasks, projectId, members, currentUserId, onStatusChange, onEdit, onAddClick,
+  status, tasks, projectId, members, currentUserId, isOwner, onStatusChange, onEdit, onAddClick,
 }: {
   status: TaskStatus;
   tasks: Task[];
   projectId: string;
   members: any[];
   currentUserId: string;
+  isOwner: boolean;
   onStatusChange: (task: Task, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
   onAddClick: () => void;
@@ -284,6 +289,8 @@ function Column({
             task={task}
             projectId={projectId}
             members={members}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
             onStatusChange={onStatusChange}
             onEdit={onEdit}
           />
@@ -294,15 +301,18 @@ function Column({
 }
 
 function TaskCard({
-  task, projectId, members, onStatusChange, onEdit,
+  task, projectId, members, currentUserId, isOwner, onStatusChange, onEdit,
 }: {
   task: Task;
   projectId: string;
   members: any[];
+  currentUserId: string;
+  isOwner: boolean;
   onStatusChange: (task: Task, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const canChangeStatus = isOwner || task.owner_id === currentUserId;
 
   return (
     <div
@@ -341,8 +351,10 @@ function TaskCard({
       <div className="mt-3 pt-3 border-t border-outline-variant/15" onClick={(e) => e.stopPropagation()}>
         <select
           value={task.status}
+          disabled={!canChangeStatus}
           onChange={(e) => startTransition(() => onStatusChange(task, e.target.value as TaskStatus))}
-          className="w-full text-[12px] font-mono uppercase tracking-widest border border-outline-variant/20 rounded px-2 py-0.5 bg-transparent text-on-surface-variant focus:outline-none"
+          className="w-full text-[12px] font-mono uppercase tracking-widest border border-outline-variant/20 rounded px-2 py-0.5 bg-transparent text-on-surface-variant focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+          title={canChangeStatus ? undefined : "Only the project owner or assignee can change status"}
         >
           {Object.entries(STATUS_LABELS).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
@@ -354,7 +366,7 @@ function TaskCard({
 }
 
 function TaskModal({
-  mode, projectId, task, defaultStatus, members, currentUserId, onClose,
+  mode, projectId, task, defaultStatus, members, currentUserId, isOwner, onClose,
 }: {
   mode: "create" | "edit";
   projectId: string;
@@ -362,10 +374,12 @@ function TaskModal({
   defaultStatus?: TaskStatus;
   members: any[];
   currentUserId: string;
+  isOwner: boolean;
   onClose: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const canChangeStatus = mode === "create" || isOwner || task?.owner_id === currentUserId;
 
   const dueDateParts = (() => {
     if (!task?.due_date) return { date: "", time: "" };
@@ -464,15 +478,27 @@ function TaskModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Status</label>
-              <select
-                name="status"
-                defaultValue={task?.status ?? defaultStatus ?? "todo"}
-                className="input-base"
-              >
-                {Object.entries(STATUS_LABELS).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
+              {canChangeStatus ? (
+                <select
+                  name="status"
+                  defaultValue={task?.status ?? defaultStatus ?? "todo"}
+                  className="input-base"
+                >
+                  {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input type="hidden" name="status" value={task?.status ?? "todo"} />
+                  <div
+                    className="input-base opacity-50 cursor-not-allowed"
+                    title="Only the project owner or assignee can change status"
+                  >
+                    {STATUS_LABELS[task?.status ?? "todo"]}
+                  </div>
+                </>
+              )}
             </div>
             <div>
               <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">AI Tool</label>
@@ -491,14 +517,28 @@ function TaskModal({
 
           <div>
             <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Assigned to</label>
-            <select name="owner_id" defaultValue={task?.owner_id ?? ""} className="input-base">
-              <option value="">Unassigned</option>
-              {members.map((m: any) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name ?? m.email}{m.id === currentUserId ? " (you)" : ""}
-                </option>
-              ))}
-            </select>
+            {isOwner ? (
+              <select name="owner_id" defaultValue={task?.owner_id ?? ""} className="input-base">
+                <option value="">Unassigned</option>
+                {members.map((m: any) => (
+                  <option key={m.id} value={m.id}>
+                    {m.display_name ?? m.email}{m.id === currentUserId ? " (you)" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input type="hidden" name="owner_id" value={task?.owner_id ?? ""} />
+                <div
+                  className="input-base opacity-50 cursor-not-allowed"
+                  title="Only the project owner can assign tasks"
+                >
+                  {task?.owner
+                    ? (task.owner as any).display_name ?? (task.owner as any).email
+                    : "Unassigned"}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">

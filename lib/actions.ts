@@ -292,23 +292,45 @@ export async function cancelInvite(inviteId: string, projectId: string) {
 // TASKS
 // ============================================================
 
+/** Returns true if the given user is an active "owner" member of the project. */
+async function isProjectOwner(supabase: any, projectId: string, userId: string) {
+  const { data } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .single();
+  return data?.role === "owner";
+}
+
 export async function createTask(projectId: string, formData: FormData) {
   const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string | null;
-  const owner_id = (formData.get("owner_id") as string) || null;
+  const requested_owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
-  const status = (formData.get("status") as TaskStatus) || "todo";
+  const requested_status = (formData.get("status") as TaskStatus) || "todo";
   const due_date_raw = formData.get("due_date") as string | null;
   const due_time_raw = (formData.get("due_time") as string | null) || "";
 
   if (!title?.trim()) throw new Error("Title is required");
   if (!due_date_raw?.trim()) throw new Error("Due date is required");
 
+  // Only the project owner can assign a task to someone.
+  const userIsOwner = await isProjectOwner(supabase, projectId, user.id);
+  if (requested_owner_id && !userIsOwner) {
+    throw new Error("Only the project owner can assign tasks");
+  }
+
   // Time is optional — default to midnight local time if not provided.
   const due_date = new Date(`${due_date_raw}T${due_time_raw || "00:00"}`).toISOString();
+
+  const owner_id = requested_owner_id;
+  // Assigning a task automatically moves it to "todo" for the assignee.
+  const status = owner_id ? "todo" : requested_status;
 
   const { data: task, error } = await supabase
     .from("tasks")
@@ -350,27 +372,45 @@ export async function updateTask(
 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string | null;
-  const owner_id = (formData.get("owner_id") as string) || null;
+  const requested_owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
-  const status = formData.get("status") as TaskStatus;
+  const requested_status = formData.get("status") as TaskStatus;
   const due_date_raw = formData.get("due_date") as string | null;
   const due_time_raw = (formData.get("due_time") as string | null) || "";
 
   if (!due_date_raw?.trim()) throw new Error("Due date is required");
   const due_date = new Date(`${due_date_raw}T${due_time_raw || "00:00"}`).toISOString();
 
-  // Get previous state and do update in parallel
-  const [{ data: prev }, { error }] = await Promise.all([
+  // Get previous state and the current user's relationship to the project.
+  const [{ data: prev }, userIsOwner] = await Promise.all([
     supabase.from("tasks").select("status, owner_id, title").eq("id", taskId).single(),
-    supabase.from("tasks").update({
-      title: title.trim(),
-      description: description?.trim() || null,
-      owner_id: owner_id || null,
-      ai_tool: ai_tool || null,
-      status,
-      due_date,
-    }).eq("id", taskId),
+    isProjectOwner(supabase, projectId, user.id),
   ]);
+
+  // Only the project owner can (re)assign a task.
+  if (requested_owner_id !== (prev?.owner_id ?? null) && !userIsOwner) {
+    throw new Error("Only the project owner can assign tasks");
+  }
+
+  // Only the project owner or the person currently assigned can change status.
+  const isCurrentAssignee = prev?.owner_id === user.id;
+  if (requested_status !== prev?.status && !userIsOwner && !isCurrentAssignee) {
+    throw new Error("Only the project owner or the assignee can change the status");
+  }
+
+  const owner_id = requested_owner_id;
+  // Assigning the task to someone new automatically moves it to "todo" for them.
+  const wasReassigned = owner_id && owner_id !== prev?.owner_id;
+  const status = wasReassigned ? "todo" : requested_status;
+
+  const { error } = await supabase.from("tasks").update({
+    title: title.trim(),
+    description: description?.trim() || null,
+    owner_id: owner_id || null,
+    ai_tool: ai_tool || null,
+    status,
+    due_date,
+  }).eq("id", taskId);
 
   if (error) throw error;
 
@@ -407,11 +447,17 @@ export async function updateTaskStatus(
   const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Run update and fetch title in parallel
-  const [, { data: task }] = await Promise.all([
-    supabase.from("tasks").update({ status }).eq("id", taskId),
-    supabase.from("tasks").select("title").eq("id", taskId).single(),
+  const [{ data: task }, userIsOwner] = await Promise.all([
+    supabase.from("tasks").select("title, owner_id").eq("id", taskId).single(),
+    isProjectOwner(supabase, projectId, user.id),
   ]);
+
+  // Only the project owner or the person currently assigned can change status.
+  if (!userIsOwner && task?.owner_id !== user.id) {
+    throw new Error("Only the project owner or the assignee can change the status");
+  }
+
+  await supabase.from("tasks").update({ status }).eq("id", taskId);
 
   // Use STATUS_LABELS from types for consistency
   const label = STATUS_LABELS[status];

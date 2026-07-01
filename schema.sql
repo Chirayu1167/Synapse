@@ -296,9 +296,12 @@ create policy "Members can create tasks in their projects"
   on public.tasks for insert
   with check (public.is_project_member(project_id) and created_by = auth.uid());
 
-create policy "Members can update tasks in their projects"
+create policy "Owner or assignee can update tasks in their projects"
   on public.tasks for update
-  using (public.is_project_member(project_id));
+  using (
+    public.is_project_owner(project_id)
+    or owner_id = auth.uid()
+  );
 
 create policy "Members can delete tasks in their projects"
   on public.tasks for delete
