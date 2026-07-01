@@ -427,7 +427,7 @@ export async function updateTask(
         entity_type: "task",
         entity_id: taskId,
         entity_title: title.trim(),
-      })
+      }).then()
     );
   }
 
@@ -440,7 +440,7 @@ export async function updateTask(
         entity_type: "task",
         entity_id: taskId,
         entity_title: title.trim(),
-      })
+      }).then()
     );
   }
 
