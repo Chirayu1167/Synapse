@@ -87,17 +87,21 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
               <p className="text-sm text-on-surface-variant mt-1">{project.description}</p>
             )}
           </div>
-          {/* Notification bell */}
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+          {/* Notification bell → links to Activity tab */}
+          <Link
+            href={`/projects/${id}/activity`}
+            className="relative flex items-center justify-center w-8 h-8 rounded hover:bg-surface-container transition-colors"
+            title={assignedTodoCount > 0 ? `${assignedTodoCount} task${assignedTodoCount > 1 ? "s" : ""} assigned to you` : "Activity"}
+          >
+            <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: 20 }}>
               notifications
             </span>
             {assignedTodoCount > 0 && (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-outline text-on-surface text-xs font-mono">
-                {assignedTodoCount}
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-on-primary text-[9px] font-mono font-bold">
+                {assignedTodoCount > 9 ? "9+" : assignedTodoCount}
               </span>
             )}
-          </div>
+          </Link>
         </div>
 
         {/* Tabs */}

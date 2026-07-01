@@ -360,6 +360,7 @@ export async function createTask(projectId: string, formData: FormData) {
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
+  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function updateTask(
@@ -415,21 +416,24 @@ export async function updateTask(
   if (error) throw error;
 
   if (prev?.status !== status) {
-    const label = STATUS_LABELS[status];
-    void supabase.from("activity_log").insert({
-      project_id: projectId,
-      actor_id: user.id,
-      action: `changed status to ${label}`,
-      entity_type: "task",
-      entity_id: taskId,
-      entity_title: title.trim(),
-    });
+    // Only log the status change if it wasn't auto-forced by a reassignment
+    if (!wasReassigned) {
+      const label = STATUS_LABELS[status];
+      void supabase.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: user.id,
+        action: `changed status to ${label}`,
+        entity_type: "task",
+        entity_id: taskId,
+        entity_title: title.trim(),
+      });
+    }
   }
   if (prev?.owner_id !== owner_id) {
     void supabase.from("activity_log").insert({
       project_id: projectId,
       actor_id: user.id,
-      action: "reassigned task",
+      action: owner_id ? "assigned task to a member" : "unassigned task",
       entity_type: "task",
       entity_id: taskId,
       entity_title: title.trim(),
@@ -437,6 +441,7 @@ export async function updateTask(
   }
 
   revalidatePath(`/projects/${projectId}/tasks`);
+  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function updateTaskStatus(
@@ -472,6 +477,7 @@ export async function updateTaskStatus(
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
+  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 export async function deleteTask(taskId: string, projectId: string) {
@@ -494,6 +500,7 @@ export async function deleteTask(taskId: string, projectId: string) {
   });
 
   revalidatePath(`/projects/${projectId}/tasks`);
+  revalidatePath(`/projects/${projectId}/activity`);
 }
 
 // ============================================================
