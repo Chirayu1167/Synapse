@@ -273,13 +273,41 @@ export async function rejectMembershipRequest(memberRowId: string, projectId: st
 }
 
 export async function removeMember(projectId: string, userId: string) {
-  const { supabase } = await getAuthUser();
-  await supabase
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Only the project owner can remove members — enforced here and by RLS.
+  const isOwner = await isProjectOwner(supabase, projectId, user.id);
+  if (!isOwner) throw new Error("Only the project owner can remove members");
+  if (userId === user.id) throw new Error("Owners can't remove themselves");
+
+  const { data: target } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .single();
+  if (target?.role === "owner") throw new Error("Can't remove the project owner");
+
+  const { error } = await supabase
     .from("project_members")
     .delete()
     .eq("project_id", projectId)
     .eq("user_id", userId);
+  if (error) throw error;
+
+  await supabase.from("activity_log").insert({
+    project_id: projectId,
+    actor_id: user.id,
+    action: "removed from project",
+    entity_type: "member_request",
+    entity_id: userId,
+    entity_title: null,
+  });
+
   revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}/team`);
 }
 
 export async function cancelInvite(inviteId: string, projectId: string) {

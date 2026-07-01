@@ -8,4 +8,5 @@ export { TeamOverview } from "./TeamOverview";
 export { TeamHeader } from "./TeamHeader";
 export { MemberList } from "./MemberList";
 export { MemberDetails } from "./MemberDetails";
+export { default as TeamMembersPanel } from "./TeamMembersPanel";
 export { TeamStats } from "./TeamStats";

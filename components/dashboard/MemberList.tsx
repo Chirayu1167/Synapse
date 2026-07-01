@@ -1,10 +1,9 @@
 'use client';
 
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import type { ProjectMember } from "@/lib/types";
+import { removeMember } from "@/lib/actions";
 
 interface MemberListProps {
   projectId: string;
@@ -18,7 +17,7 @@ interface MemberListProps {
     updated_at: string;
   }>;
   currentUserId: string;
-  onMemberSelect?: (memberId: string) => void;
+  onMemberSelect?: (memberId: string | null) => void;
 }
 
 export function MemberList({
@@ -29,6 +28,8 @@ export function MemberList({
   onMemberSelect,
 }: MemberListProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [isRemoving, startRemoveTransition] = useTransition();
+  const [removeError, setRemoveError] = useState("");
 
   // Get task counts for a specific user
   const getTaskCounts = (userId: string) => {
@@ -194,34 +195,36 @@ export function MemberList({
             Actions
           </p>
           <div className="space-y-2">
-            {/* View details would be handled by navigation or modal */}
-            <button
-              onClick={() => {
-                // Navigate to member details or show modal
-                console.log("View details for:", selectedMemberId);
-              }}
-              className="w-full text-left px-3 py-2 btn-ghost text-xs"
-            >
-              View Details
-            </button>
-
             {/* Remove member (only for owners) */}
             {members.some(m => m.user_id === currentUserId && m.role === "owner") && (
               <button
                 onClick={() => {
-                  // Handle remove member logic
-                  console.log("Remove member:", selectedMemberId);
+                  setRemoveError("");
+                  const memberId = selectedMemberId;
+                  startRemoveTransition(async () => {
+                    try {
+                      await removeMember(projectId, memberId);
+                      setSelectedMemberId(null);
+                      onMemberSelect?.(null);
+                    } catch (err) {
+                      setRemoveError(err instanceof Error ? err.message : "Failed to remove member");
+                    }
+                  });
                 }}
-                className="w-full text-left px-3 py-2 btn-destructive text-xs"
+                className="w-full text-left px-3 py-2 btn-destructive text-xs disabled:opacity-50"
                 disabled={
+                  isRemoving ||
                   // Prevent removing self or last owner
                   selectedMemberId === currentUserId ||
                   (members.filter(m => m.role === "owner").length === 1 &&
                    members.find(m => m.user_id === selectedMemberId)?.role === "owner")
                 }
               >
-                Remove from Team
+                {isRemoving ? "Removing…" : "Remove from Team"}
               </button>
+            )}
+            {removeError && (
+              <p className="text-[11px] font-mono text-error">{removeError}</p>
             )}
           </div>
         </div>

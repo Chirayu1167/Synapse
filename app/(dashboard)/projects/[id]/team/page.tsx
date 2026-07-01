@@ -1,12 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
 import { routeBenchTimer } from "@/lib/dev/route-bench";
-import {
-  TeamHeader,
-  TeamStats,
-  MemberList,
-  MemberDetails,
-} from "@/components/dashboard";
+import { TeamHeader, TeamStats, TeamMembersPanel } from "@/components/dashboard";
 
 export default async function TeamPage({
   params,
@@ -72,21 +67,12 @@ export default async function TeamPage({
       <TeamStats project={project} members={processedMembers} tasks={tasks ?? []} />
 
       {/* Main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Member List */}
-        <MemberList
-          projectId={projectId}
-          members={processedMembers}
-          tasks={tasks ?? []}
-          currentUserId={user.id}
-        />
-
-        {/* Member Details */}
-        <MemberDetails
-          selectedMemberId={null} // Would be managed by parent component state
-          members={processedMembers}
-        />
-      </div>
+      <TeamMembersPanel
+        projectId={projectId}
+        members={processedMembers}
+        tasks={tasks ?? []}
+        currentUserId={user.id}
+      />
     </div>
   );
 }

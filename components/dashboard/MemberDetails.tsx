@@ -1,18 +1,19 @@
 'use client';
 
-import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { useState } from "react";
-import type { ProjectMember } from "@/lib/types";
 
 interface MemberDetailsProps {
   selectedMemberId: string | null;
   members: Array<{ user_id: string; role: string; user: any }>;
+  tasks?: Array<{ owner_id: string | null; status: string }>;
+  currentUserId?: string;
 }
 
 export function MemberDetails({
   selectedMemberId,
   members,
+  tasks = [],
+  currentUserId,
 }: MemberDetailsProps) {
   if (!selectedMemberId || !members) {
     return (
@@ -51,7 +52,9 @@ export function MemberDetails({
     );
   }
 
-  const isCurrentUser = member.user?.id === member.user_id;
+  const isCurrentUser = member.user_id === currentUserId;
+  const assignedTasks = tasks.filter(t => t.owner_id === member.user_id);
+  const completedTasks = assignedTasks.filter(t => t.status === "done");
 
   return (
     <div className="glass-panel p-6">
@@ -89,7 +92,7 @@ export function MemberDetails({
             <p className="text-on-surface-variant/60 text-[12px] font-mono">
               {member.role === "owner" ? "Owner" : "Member"}
             </p>
-            {member.user_id === member.user?.id && (
+            {isCurrentUser && (
               <p className="text-on-success text-[11px] font-mono mt-1">
                 (You)
               </p>
@@ -106,15 +109,11 @@ export function MemberDetails({
             <div className="space-y-2">
               <div className="flex justify-between text-[12px] font-mono">
                 <span>Tasks Assigned</span>
-                <span className="font-medium">0</span>
+                <span className="font-medium">{assignedTasks.length}</span>
               </div>
               <div className="flex justify-between text-[12px] font-mono">
                 <span>Completed Tasks</span>
-                <span className="font-medium">0</span>
-              </div>
-              <div className="flex justify-between text-[12px] font-mono">
-                <span>Last Active</span>
-                <span className="text-on-surface-variant/60">Today</span>
+                <span className="font-medium">{completedTasks.length}</span>
               </div>
             </div>
           </div>
