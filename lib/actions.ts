@@ -415,7 +415,7 @@ export async function updateTask(
 
   if (error) throw error;
 
-  const activityInserts: Promise<any>[] = [];
+  const activityInserts: PromiseLike<any>[] = [];
 
   if (prev?.status !== status && !wasReassigned) {
     const label = STATUS_LABELS[status];
