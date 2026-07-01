@@ -18,20 +18,14 @@ const TABS = [
 
 export default async function ProjectLayout({ children, params }: ProjectLayoutProps) {
   const { id } = await params;
-  console.error("[ProjectLayout] DEBUG start, id=", id);
   const { supabase, user } = await getAuthUser();
-  console.error("[ProjectLayout] DEBUG user=", user?.id, user?.email);
-  if (!user) {
-    console.error("[ProjectLayout] DEBUG no user, redirecting to /login");
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
-  const { data: whoami } = await supabase.rpc("debug_whoami");
-  console.error("[ProjectLayout] DEBUG whoami=", JSON.stringify(whoami));
-
+  // Run all 3 queries in parallel — previously sequential due to debug_whoami waterfall
   const [
-    { data: project, error: projectError },
-    { data: membership, error: membershipError },
+    { data: project },
+    { data: membership },
+    { count: assignedTodoCount },
   ] = await Promise.all([
     supabase.from("projects").select("id, name, description").eq("id", id).single(),
     supabase
@@ -41,33 +35,16 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
       .eq("user_id", user.id)
       .eq("status", "active")
       .single(),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", id)
+      .eq("owner_id", user.id)
+      .eq("status", "todo"),
   ]);
-  console.error("[ProjectLayout] DEBUG project=", JSON.stringify(project), "projectError=", JSON.stringify(projectError));
-  console.error("[ProjectLayout] DEBUG membership=", JSON.stringify(membership), "membershipError=", JSON.stringify(membershipError));
 
-  // Count of tasks assigned to current user that are in 'todo' (accepted but not accepted)
-  const { count: rawCount, error: assignedTodosError } = await supabase
-    .from('tasks')
-    .select('id', { count: 'exact', head: true })
-    .eq('project_id', id)
-    .eq('owner_id', user.id)
-    .eq('status', 'todo');
-
-  let assignedTodoCount = 0;
-  if (rawCount !== null && rawCount !== undefined) {
-    assignedTodoCount = rawCount;
-  }
-
-  if (!project) {
-    console.error("[ProjectLayout] DEBUG no project, calling notFound()");
-    notFound();
-  }
-
-  if (!membership) {
-    console.error("[ProjectLayout] DEBUG no membership, redirecting to /projects");
-    redirect("/projects");
-  }
-  console.error("[ProjectLayout] DEBUG success, rendering project page");
+  if (!project) notFound();
+  if (!membership) redirect("/projects");
 
   return (
     <div className="flex flex-col h-full">
@@ -91,12 +68,12 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
           <Link
             href={`/projects/${id}/activity`}
             className="relative flex items-center justify-center w-8 h-8 rounded hover:bg-surface-container transition-colors"
-            title={assignedTodoCount > 0 ? `${assignedTodoCount} task${assignedTodoCount > 1 ? "s" : ""} assigned to you` : "Activity"}
+            title={assignedTodoCount ? `${assignedTodoCount} task${assignedTodoCount > 1 ? "s" : ""} assigned to you` : "Activity"}
           >
             <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: 20 }}>
               notifications
             </span>
-            {assignedTodoCount > 0 && (
+            {!!assignedTodoCount && assignedTodoCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-on-primary text-[9px] font-mono font-bold">
                 {assignedTodoCount > 9 ? "9+" : assignedTodoCount}
               </span>

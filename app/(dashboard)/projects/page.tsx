@@ -6,11 +6,16 @@ export default async function ProjectsPage() {
   const { supabase, user } = await getAuthUser();
   if (!user) redirect("/login");
 
-  const { data: memberships } = await supabase
-    .from("project_members")
-    .select("project_id, role, projects(*, owner:users!projects_owner_id_fkey(display_name, email))")
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  // Single query: memberships + project data. Count queries run in parallel.
+  const [{ data: memberships }, { data: taskCounts }, { data: todoCounts }] = await Promise.all([
+    supabase
+      .from("project_members")
+      .select("project_id, role, projects(*, owner:users!projects_owner_id_fkey(display_name, email))")
+      .eq("user_id", user.id)
+      .eq("status", "active"),
+    supabase.from("tasks").select("project_id, status"),
+    supabase.from("todos").select("project_id, done"),
+  ]);
 
   type ProjectRow = {
     id: string;
@@ -26,21 +31,7 @@ export default async function ProjectsPage() {
       if (!p) return [];
       return Array.isArray(p) ? p : [p];
     })
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
-
-  const projectIds = projects.map((p) => p.id);
-
-  const [{ data: taskCounts }, { data: todoCounts }] = await Promise.all([
-    projectIds.length
-      ? supabase.from("tasks").select("project_id, status").in("project_id", projectIds)
-      : Promise.resolve({ data: [] }),
-    projectIds.length
-      ? supabase.from("todos").select("project_id, done").in("project_id", projectIds)
-      : Promise.resolve({ data: [] }),
-  ]);
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const taskCountMap: Record<string, { total: number; done: number }> = {};
   for (const t of taskCounts ?? []) {
