@@ -15,7 +15,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   await ensureUserProfile(supabase, user).catch((error) => {
     console.error("Failed to ensure user profile", error);
   });
-  const { profile, projects, requests } = await getDashboardSidebarData(user.id);
+  const { profile, projects, requests, notifications } = await getDashboardSidebarData(user.id);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -25,6 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           initialProfile={profile}
           initialProjects={projects}
           initialRequests={requests}
+          initialNotifications={notifications}
           initialUser={user}
         />
       </aside>

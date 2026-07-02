@@ -12,12 +12,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { profile, projects, requests } = await getDashboardSidebarData(user.id);
+    const { profile, projects, requests, notifications } = await getDashboardSidebarData(user.id);
 
     return NextResponse.json({
       profile,
       projects,
       requests,
+      notifications,
     });
   } catch (error) {
     console.error("Error in sidebar API:", error);

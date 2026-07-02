@@ -62,6 +62,38 @@ export type Task = {
   owner?: UserProfile | null;
   creator?: UserProfile | null;
   due_date: string | null;
+  priority: TaskPriority;
+};
+
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
+export type TaskComment = {
+  id: string;
+  task_id: string;
+  project_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  author?: UserProfile | null;
+};
+
+export type NotificationType =
+  | "task_assigned"
+  | "task_status_changed"
+  | "task_comment"
+  | "member_removed";
+
+export type AppNotification = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  task_id: string | null;
+  type: NotificationType;
+  message: string;
+  link: string;
+  read: boolean;
+  created_at: string;
 };
 
 export type Todo = {
@@ -168,4 +200,23 @@ export const COLUMN_ACCENT: Record<TaskStatus, string> = {
   in_progress: "text-on-surface",
   testing:     "text-on-surface-variant/50",
   done:        "text-on-surface-variant/40",
+};
+
+export const PRIORITY_ORDER: TaskPriority[] = ["urgent", "high", "medium", "low"];
+
+export const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  urgent: "Urgent",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+// Deliberately uses semantic color roles (not the neutral outline palette
+// the rest of the app favors) since priority needs to be scannable at a
+// glance across a crowded board.
+export const PRIORITY_COLORS: Record<TaskPriority, string> = {
+  urgent: "border border-error/40 text-error bg-error/10",
+  high: "border border-tertiary/40 text-tertiary bg-tertiary/10",
+  medium: "border border-outline-variant/30 text-on-surface-variant",
+  low: "border border-outline-variant/20 text-on-surface-variant/50",
 };

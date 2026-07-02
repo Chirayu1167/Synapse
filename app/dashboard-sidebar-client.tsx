@@ -6,12 +6,14 @@ import Image from "next/image";
 import { profileFromAuthUser } from "@/lib/users";
 import RequestsSection from "@/components/dashboard/RequestsSection";
 import ThemeToggle from "@/components/dashboard/ThemeToggle";
+import NotificationBell from "@/components/dashboard/NotificationBell";
 import { initials } from "@/lib/utils";
 
 interface SidebarProps {
   initialProfile: any;
   initialProjects: any[];
   initialRequests: any[];
+  initialNotifications: any[];
   initialUser: any; // For fallback display
 }
 
@@ -19,11 +21,13 @@ export default function SidebarClient({
   initialProfile,
   initialProjects,
   initialRequests,
+  initialNotifications,
   initialUser
 }: SidebarProps) {
   const [profile, setProfile] = useState<any>(initialProfile ?? null);
   const [projects, setProjects] = useState<any[]>(initialProjects ?? []);
   const [requests, setRequests] = useState<any[]>(initialRequests ?? []);
+  const [notifications, setNotifications] = useState<any[]>(initialNotifications ?? []);
 
   // Fetch initial data and set up periodic refresh
   useEffect(() => {
@@ -39,6 +43,7 @@ export default function SidebarClient({
         setProfile(data.profile ?? null);
         setProjects(data.projects ?? []);
         setRequests(data.requests ?? []);
+        setNotifications(data.notifications ?? []);
       } catch (error) {
         console.error("Error fetching sidebar data:", error);
         // On error, we keep the existing data
@@ -67,16 +72,17 @@ export default function SidebarClient({
   return (
     <>
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-outline-variant/20">
-        <Link href="/projects" className="flex items-center gap-3">
+      <div className="px-6 py-5 border-b border-outline-variant/20 flex items-center justify-between gap-3">
+        <Link href="/projects" className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded border border-outline-variant flex items-center justify-center shrink-0 bg-surface-container-low">
             <span className="material-symbols-outlined text-on-surface" style={{ fontSize: 20 }}>hub</span>
           </div>
-          <div>
-            <p className="text-on-surface text-sm font-mono tracking-widest uppercase font-semibold">Synapse</p>
+          <div className="min-w-0">
+            <p className="text-on-surface text-sm font-mono tracking-widest uppercase font-semibold truncate">Synapse</p>
             <p className="text-on-surface-variant text-[11px] font-mono uppercase tracking-widest opacity-50">OS · v2.4.1</p>
           </div>
         </Link>
+        <NotificationBell notifications={notifications} />
       </div>
 
       {/* Nav */}

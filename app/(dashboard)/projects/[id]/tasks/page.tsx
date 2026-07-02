@@ -9,7 +9,7 @@ export default async function TasksPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ owner?: string; tool?: string; status?: string }>;
+  searchParams: Promise<{ owner?: string; tool?: string; status?: string; priority?: string; q?: string }>;
 }) {
   const { id: projectId } = await params;
   const filters = await searchParams;

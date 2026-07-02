@@ -22,7 +22,7 @@ function normalizeJoinedProject(
 export const getDashboardSidebarData = cache(async (userId: string) => {
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: memberships }, { data: ownRequests }] = await Promise.all([
+  const [{ data: profile }, { data: memberships }, { data: ownRequests }, { data: notifications }] = await Promise.all([
     supabase.from("users").select("*").eq("id", userId).single(),
     supabase
       .from("project_members")
@@ -38,6 +38,12 @@ export const getDashboardSidebarData = cache(async (userId: string) => {
       .select("id, status, project_id, projects(id, name)")
       .eq("user_id", userId)
       .in("status", ["invited", "pending_approval"]),
+    supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   const projects = (memberships ?? [])
@@ -54,5 +60,5 @@ export const getDashboardSidebarData = cache(async (userId: string) => {
     project: normalizeJoinedProject(r.projects)[0] ?? null,
   }));
 
-  return { profile, projects, requests };
+  return { profile, projects, requests, notifications: notifications ?? [] };
 });

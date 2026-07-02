@@ -2,17 +2,18 @@
 
 import { useState, useTransition, Fragment, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Task, TaskStatus, ProjectMember } from "@/lib/types";
-import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, STATUS_COLORS_ACTIVE, TOOL_COLORS, COLUMN_ACCENT, getMaxStatus } from "@/lib/types";
+import type { Task, TaskStatus, TaskPriority, ProjectMember } from "@/lib/types";
+import { AI_TOOLS, STATUS_LABELS, STATUS_COLORS, STATUS_COLORS_ACTIVE, TOOL_COLORS, COLUMN_ACCENT, getMaxStatus, PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_ORDER } from "@/lib/types";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
 import { cn, initials } from "@/lib/utils";
+import TaskComments from "./TaskComments";
 
 interface Props {
   projectId: string;
   tasks: Task[];
   members: ProjectMember[];
   currentUserId: string;
-  filters: { owner?: string; tool?: string; status?: string };
+  filters: { owner?: string; tool?: string; status?: string; priority?: string; q?: string };
 }
 
 const COLUMNS: TaskStatus[] = ["unassigned", "todo", "in_progress", "testing", "done"];
@@ -33,6 +34,8 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [ownerFilter, setOwnerFilter] = useState(filters.owner ?? "");
   const [toolFilter, setToolFilter] = useState(filters.tool ?? "");
+  const [priorityFilter, setPriorityFilter] = useState(filters.priority ?? "");
+  const [search, setSearch] = useState(filters.q ?? "");
 
   // Update URL when filters change
   useEffect(() => {
@@ -41,13 +44,24 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
     else params.delete('owner');
     if (toolFilter) params.set('tool', toolFilter);
     else params.delete('tool');
+    if (priorityFilter) params.set('priority', priorityFilter);
+    else params.delete('priority');
+    if (search) params.set('q', search);
+    else params.delete('q');
     // Preserve other existing query params (like status, page, etc.)
     router.push(`?${params.toString()}`, { scroll: false });
-  }, [ownerFilter, toolFilter, searchParams, router]);
+  }, [ownerFilter, toolFilter, priorityFilter, search, searchParams, router]);
 
   const filtered = tasks.filter((t) => {
     if (ownerFilter && t.owner_id !== ownerFilter) return false;
     if (toolFilter && t.ai_tool !== toolFilter) return false;
+    if (priorityFilter && t.priority !== priorityFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const inTitle = t.title.toLowerCase().includes(q);
+      const inDescription = t.description?.toLowerCase().includes(q) ?? false;
+      if (!inTitle && !inDescription) return false;
+    }
     return true;
   });
 
@@ -86,6 +100,14 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40">Filter</p>
 
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search tasks…"
+          className="text-[12px] font-mono border border-outline-variant/30 rounded px-2 py-1 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-outline w-48"
+        />
+
         <select
           value={ownerFilter}
           onChange={(e) => setOwnerFilter(e.target.value)}
@@ -108,9 +130,20 @@ export default function TaskBoard({ projectId, tasks, members, currentUserId, fi
           ))}
         </select>
 
-        {(ownerFilter || toolFilter) && (
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="text-[10px] font-mono uppercase tracking-widest border border-outline-variant/30 rounded px-2 py-1 bg-surface-container-low text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-outline"
+        >
+          <option value="">All priorities</option>
+          {PRIORITY_ORDER.map((p) => (
+            <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+          ))}
+        </select>
+
+        {(ownerFilter || toolFilter || priorityFilter || search) && (
           <button
-            onClick={() => { setOwnerFilter(""); setToolFilter(""); }}
+            onClick={() => { setOwnerFilter(""); setToolFilter(""); setPriorityFilter(""); setSearch(""); }}
             className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 hover:text-error transition-colors"
           >
             Clear
@@ -330,6 +363,9 @@ function TaskCard({
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn("badge text-[12px]", PRIORITY_COLORS[task.priority])}>
+            {PRIORITY_LABELS[task.priority]}
+          </span>
           {task.ai_tool && (
             <span className={cn("badge text-[12px]", TOOL_COLORS[task.ai_tool] ?? "border border-outline-variant/30 text-on-surface-variant")}>
               {task.ai_tool}
@@ -412,7 +448,7 @@ function TaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="glass-panel w-full max-w-lg border-outline-variant/30">
+      <div className="glass-panel w-full max-w-lg border-outline-variant/30 max-h-[90vh] overflow-y-auto">
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-outline-variant/20">
           <div>
@@ -475,7 +511,7 @@ function TaskModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Status</label>
               {canChangeStatus ? (
@@ -499,6 +535,18 @@ function TaskModal({
                   </div>
                 </>
               )}
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">Priority</label>
+              <select
+                name="priority"
+                defaultValue={task?.priority ?? "medium"}
+                className="input-base"
+              >
+                {PRIORITY_ORDER.map((p) => (
+                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/60 mb-1.5">AI Tool</label>
@@ -565,6 +613,19 @@ function TaskModal({
             </div>
           </div>
         </form>
+
+        {/* Rendered outside the form above — it has its own <form>, and
+            nested <form> elements are invalid HTML. */}
+        {mode === "edit" && task && (
+          <div className="px-6 pb-6">
+            <TaskComments
+              taskId={task.id}
+              projectId={projectId}
+              currentUserId={currentUserId}
+              isProjectOwner={isOwner}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/users";
-import type { TaskStatus } from "@/lib/types";
+import type { TaskStatus, TaskPriority } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
 // ============================================================
@@ -332,6 +332,33 @@ async function isProjectOwner(supabase: any, projectId: string, userId: string) 
   return data?.role === "owner";
 }
 
+/**
+ * Fire-and-forget in-app notification for another project member.
+ * Never notifies the acting user about their own action.
+ */
+function notifyUser(
+  supabase: any,
+  params: {
+    userId: string;
+    actorId: string;
+    projectId: string;
+    taskId: string;
+    type: "task_assigned" | "task_status_changed" | "task_comment";
+    message: string;
+    link: string;
+  }
+) {
+  if (params.userId === params.actorId) return;
+  supabase.from("notifications").insert({
+    user_id: params.userId,
+    project_id: params.projectId,
+    task_id: params.taskId,
+    type: params.type,
+    message: params.message,
+    link: params.link,
+  }).then();
+}
+
 export async function createTask(projectId: string, formData: FormData) {
   const { supabase, user } = await getAuthUser();
   if (!user) throw new Error("Not authenticated");
@@ -341,6 +368,7 @@ export async function createTask(projectId: string, formData: FormData) {
   const requested_owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
   const requested_status = (formData.get("status") as TaskStatus) || "todo";
+  const priority = (formData.get("priority") as TaskPriority) || "medium";
   const due_date_raw = formData.get("due_date") as string | null;
   const due_time_raw = (formData.get("due_time") as string | null) || "";
 
@@ -369,6 +397,7 @@ export async function createTask(projectId: string, formData: FormData) {
       owner_id: owner_id || null,
       ai_tool: ai_tool || null,
       status,
+      priority,
       due_date,
       created_by: user.id,
     })
@@ -376,6 +405,18 @@ export async function createTask(projectId: string, formData: FormData) {
     .single();
 
   if (error) throw error;
+
+  if (owner_id) {
+    notifyUser(supabase, {
+      userId: owner_id,
+      actorId: user.id,
+      projectId,
+      taskId: task.id,
+      type: "task_assigned",
+      message: `You were assigned "${task.title}"`,
+      link: `/projects/${projectId}/tasks`,
+    });
+  }
 
   // Fire activity log without blocking revalidation
   supabase.from("activity_log").insert({
@@ -404,6 +445,7 @@ export async function updateTask(
   const requested_owner_id = (formData.get("owner_id") as string) || null;
   const ai_tool = (formData.get("ai_tool") as string) || null;
   const requested_status = formData.get("status") as TaskStatus;
+  const priority = (formData.get("priority") as TaskPriority) || "medium";
   const due_date_raw = formData.get("due_date") as string | null;
   const due_time_raw = (formData.get("due_time") as string | null) || "";
 
@@ -438,6 +480,7 @@ export async function updateTask(
     owner_id: owner_id || null,
     ai_tool: ai_tool || null,
     status,
+    priority,
     due_date,
   }).eq("id", taskId);
 
@@ -457,6 +500,17 @@ export async function updateTask(
         entity_title: title.trim(),
       }).then()
     );
+    if (owner_id) {
+      notifyUser(supabase, {
+        userId: owner_id,
+        actorId: user.id,
+        projectId,
+        taskId,
+        type: "task_status_changed",
+        message: `"${title.trim()}" moved to ${label}`,
+        link: `/projects/${projectId}/tasks`,
+      });
+    }
   }
 
   if (prev?.owner_id !== owner_id) {
@@ -470,6 +524,17 @@ export async function updateTask(
         entity_title: title.trim(),
       }).then()
     );
+    if (owner_id) {
+      notifyUser(supabase, {
+        userId: owner_id,
+        actorId: user.id,
+        projectId,
+        taskId,
+        type: "task_assigned",
+        message: `You were assigned "${title.trim()}"`,
+        link: `/projects/${projectId}/tasks`,
+      });
+    }
   }
 
   if (activityInserts.length) await Promise.all(activityInserts);
@@ -507,6 +572,18 @@ export async function updateTaskStatus(
     entity_id: taskId,
     entity_title: task?.title ?? null,
   });
+
+  if (task?.owner_id) {
+    notifyUser(supabase, {
+      userId: task.owner_id,
+      actorId: user.id,
+      projectId,
+      taskId,
+      type: "task_status_changed",
+      message: `"${task.title}" moved to ${label}`,
+      link: `/projects/${projectId}/tasks`,
+    });
+  }
 
   revalidatePath(`/projects/${projectId}/tasks`);
   revalidatePath(`/projects/${projectId}/activity`);
@@ -705,3 +782,139 @@ export async function deleteContextEntry(entryId: string, projectId: string) {
   await supabase.from("context_entries").delete().eq("id", entryId);
   revalidatePath(`/projects/${projectId}/context`);
 }
+
+// ============================================================
+// TASK COMMENTS
+// ============================================================
+
+export async function getTaskComments(taskId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("task_comments")
+    .select("*, author:users(id, display_name, email, avatar_url)")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addTaskComment(taskId: string, projectId: string, formData: FormData) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const body = (formData.get("body") as string) ?? "";
+  if (!body.trim()) throw new Error("Comment can't be empty");
+
+  const { data: task } = await supabase
+    .from("tasks")
+    .select("title, owner_id, created_by")
+    .eq("id", taskId)
+    .single();
+
+  const { data: comment, error } = await supabase
+    .from("task_comments")
+    .insert({
+      task_id: taskId,
+      project_id: projectId,
+      author_id: user.id,
+      body: body.trim(),
+    })
+    .select("*, author:users(id, display_name, email, avatar_url)")
+    .single();
+
+  if (error) throw error;
+
+  supabase.from("activity_log").insert({
+    project_id: projectId,
+    actor_id: user.id,
+    action: "commented on task",
+    entity_type: "task",
+    entity_id: taskId,
+    entity_title: task?.title ?? null,
+  }).then();
+
+  // Notify the task owner and creator (if different from the commenter),
+  // deduped so a person doesn't get two notifications for one comment.
+  const recipients = new Set([task?.owner_id, task?.created_by].filter(Boolean) as string[]);
+  for (const recipientId of recipients) {
+    notifyUser(supabase, {
+      userId: recipientId,
+      actorId: user.id,
+      projectId,
+      taskId,
+      type: "task_comment",
+      message: `New comment on "${task?.title ?? "a task"}"`,
+      link: `/projects/${projectId}/tasks`,
+    });
+  }
+
+  revalidatePath(`/projects/${projectId}/tasks`);
+  revalidatePath(`/projects/${projectId}/activity`);
+  return comment;
+}
+
+export async function deleteTaskComment(commentId: string, taskId: string, projectId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: comment } = await supabase
+    .from("task_comments")
+    .select("author_id")
+    .eq("id", commentId)
+    .single();
+
+  const userIsOwner = await isProjectOwner(supabase, projectId, user.id);
+  if (comment?.author_id !== user.id && !userIsOwner) {
+    throw new Error("Only the comment author or the project owner can delete this comment");
+  }
+
+  const { error } = await supabase.from("task_comments").delete().eq("id", commentId);
+  if (error) throw error;
+
+  revalidatePath(`/projects/${projectId}/tasks`);
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+export async function getNotifications(limit = 20) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function markNotificationRead(notificationId: string) {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("id", notificationId)
+    .eq("user_id", user.id);
+}
+
+export async function markAllNotificationsRead() {
+  const { supabase, user } = await getAuthUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("user_id", user.id)
+    .eq("read", false);
+}
+

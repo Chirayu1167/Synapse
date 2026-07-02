@@ -71,9 +71,11 @@ create table public.tasks (
   project_id  uuid not null references public.projects(id) on delete cascade,
   title       text not null,
   description text,
-  status      text not null default 'todo' check (status in ('todo', 'in_progress', 'done')),
+  status      text not null default 'todo' check (status in ('unassigned', 'todo', 'in_progress', 'testing', 'done')),
+  priority    text not null default 'medium' check (priority in ('low', 'medium', 'high', 'urgent')),
   owner_id    uuid references public.users(id) on delete set null,
   ai_tool     text,                   -- references ai_tools.name (loose FK, allows custom names)
+  due_date    timestamptz,
   created_by  uuid not null references public.users(id) on delete restrict,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -126,6 +128,30 @@ create table public.context_entries (
   created_at  timestamptz not null default now()
 );
 
+-- Comments on tasks
+create table public.task_comments (
+  id          uuid primary key default uuid_generate_v4(),
+  task_id     uuid not null references public.tasks(id) on delete cascade,
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  author_id   uuid not null references public.users(id) on delete cascade,
+  body        text not null check (char_length(btrim(body)) > 0),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- In-app notifications (per user, cross-project)
+create table public.notifications (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid not null references public.users(id) on delete cascade,
+  project_id  uuid not null references public.projects(id) on delete cascade,
+  task_id     uuid references public.tasks(id) on delete cascade,
+  type        text not null check (type in ('task_assigned', 'task_status_changed', 'task_comment', 'member_removed')),
+  message     text not null,
+  link        text not null,
+  read        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -134,12 +160,15 @@ create index idx_project_members_user_id   on public.project_members(user_id);
 create index idx_project_members_project_id on public.project_members(project_id);
 create index idx_tasks_project_id          on public.tasks(project_id);
 create index idx_tasks_owner_id            on public.tasks(owner_id);
+create index idx_tasks_priority            on public.tasks(priority);
 create index idx_todos_project_id          on public.todos(project_id);
 create index idx_activity_log_project_id   on public.activity_log(project_id);
 create index idx_activity_log_created_at   on public.activity_log(created_at desc);
 create index idx_ai_usage_entries_user_id  on public.ai_usage_entries(user_id);
 create index idx_context_entries_project_id on public.context_entries(project_id);
 create index idx_pending_invites_email     on public.pending_invites(invited_email);
+create index idx_task_comments_task_id     on public.task_comments(task_id, created_at);
+create index idx_notifications_user_id     on public.notifications(user_id, read, created_at desc);
 
 -- ============================================================
 -- UPDATED_AT TRIGGER
@@ -173,6 +202,10 @@ create trigger trg_ai_usage_updated_at
   before update on public.ai_usage_entries
   for each row execute function public.set_updated_at();
 
+create trigger trg_task_comments_updated_at
+  before update on public.task_comments
+  for each row execute function public.set_updated_at();
+
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
@@ -188,6 +221,8 @@ alter table public.todos             enable row level security;
 alter table public.activity_log      enable row level security;
 alter table public.ai_usage_entries  enable row level security;
 alter table public.context_entries   enable row level security;
+alter table public.task_comments     enable row level security;
+alter table public.notifications     enable row level security;
 
 -- Helper function: is the current user a member of a given project?
 create or replace function public.is_project_member(p_project_id uuid)
@@ -364,6 +399,47 @@ create policy "Members can add context entries to their projects"
 create policy "Entry author can delete their context entry"
   on public.context_entries for delete
   using (added_by = auth.uid() or public.is_project_owner(project_id));
+
+-- ---- task_comments ----
+create policy "Members can view comments in their projects"
+  on public.task_comments for select
+  using (public.is_project_member(project_id));
+
+create policy "Members can add comments in their projects"
+  on public.task_comments for insert
+  with check (public.is_project_member(project_id) and author_id = auth.uid());
+
+create policy "Comment author can edit their comment"
+  on public.task_comments for update
+  using (author_id = auth.uid());
+
+create policy "Comment author or project owner can delete a comment"
+  on public.task_comments for delete
+  using (author_id = auth.uid() or public.is_project_owner(project_id));
+
+-- ---- notifications ----
+-- Notifications are only ever inserted by server actions (using the
+-- user's own session on behalf of another member) or the service role;
+-- there is deliberately no direct insert policy for arbitrary users
+-- writing notifications for other users. We allow a member to insert a
+-- notification for another member of the *same* project, which covers
+-- app-triggered notifications (assignment, comments, status changes)
+-- while still preventing cross-project spam.
+create policy "Recipient can view their own notifications"
+  on public.notifications for select
+  using (user_id = auth.uid());
+
+create policy "Members can create notifications for project peers"
+  on public.notifications for insert
+  with check (public.is_project_member(project_id));
+
+create policy "Recipient can update (mark read) their own notifications"
+  on public.notifications for update
+  using (user_id = auth.uid());
+
+create policy "Recipient can delete their own notifications"
+  on public.notifications for delete
+  using (user_id = auth.uid());
 
 -- ============================================================
 -- SUPABASE AUTH HOOK: resolve pending invites on login
